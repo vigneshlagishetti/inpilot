@@ -23,49 +23,72 @@ export default function SignUpPage() {
             transition={{ duration: 0.6 }}
             className="text-center mb-8"
           >
-            {/* Logo */}
+            {/* Logo with glow effect */}
             <div className="flex justify-center mb-6">
-              <div className="p-3 sm:p-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg">
-                <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-              </div>
+              <motion.div 
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                className="relative"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-2xl blur-xl opacity-50 animate-pulse"></div>
+                <div className="relative p-3 sm:p-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300">
+                  <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                </div>
+              </motion.div>
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+            <motion.h1 
+              whileHover={{ scale: 1.05 }}
+              transition={{ type: "spring", stiffness: 300 }}
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent cursor-default"
+            >
               Start Your Journey
-            </h1>
+            </motion.h1>
             <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-6 sm:mb-8 px-4">
               Join thousands practicing interviews with AI assistance
             </p>
 
-            {/* Benefits */}
+            {/* Benefits with hover effects */}
             <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-sm mx-auto mb-8">
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.1, y: -5 }}
                 transition={{ delay: 0.2, duration: 0.4 }}
-                className="glass p-3 sm:p-4 rounded-xl border border-white/20 dark:border-white/10 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl"
+                className="relative glass p-3 sm:p-4 rounded-xl border border-white/20 dark:border-white/10 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl hover:shadow-xl cursor-pointer group overflow-hidden"
               >
-                <Rocket className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-blue-500 dark:text-blue-400" />
-                <p className="text-xs font-medium text-gray-700 dark:text-gray-200">Launch</p>
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                <div className="relative z-10">
+                  <Rocket className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-blue-500 dark:text-blue-400 group-hover:scale-110 transition-transform duration-300" />
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-200">Launch</p>
+                </div>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.1, y: -5 }}
                 transition={{ delay: 0.3, duration: 0.4 }}
-                className="glass p-3 sm:p-4 rounded-xl border border-white/20 dark:border-white/10 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl"
+                className="relative glass p-3 sm:p-4 rounded-xl border border-white/20 dark:border-white/10 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl hover:shadow-xl cursor-pointer group overflow-hidden"
               >
-                <Target className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-purple-500 dark:text-purple-400" />
-                <p className="text-xs font-medium text-gray-700 dark:text-gray-200">Practice</p>
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-purple-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                <div className="relative z-10">
+                  <Target className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-purple-500 dark:text-purple-400 group-hover:scale-110 transition-transform duration-300" />
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-200">Practice</p>
+                </div>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.1, y: -5 }}
                 transition={{ delay: 0.4, duration: 0.4 }}
-                className="glass p-3 sm:p-4 rounded-xl border border-white/20 dark:border-white/10 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl"
+                className="relative glass p-3 sm:p-4 rounded-xl border border-white/20 dark:border-white/10 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl hover:shadow-xl cursor-pointer group overflow-hidden"
               >
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-yellow-500 dark:text-yellow-400" />
-                <p className="text-xs font-medium text-gray-700 dark:text-gray-200">Succeed</p>
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-500 to-orange-500 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                <div className="relative z-10">
+                  <Trophy className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-yellow-500 dark:text-yellow-400 group-hover:scale-110 transition-transform duration-300" />
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-200">Succeed</p>
+                </div>
               </motion.div>
             </div>
           </motion.div>
@@ -83,9 +106,11 @@ export default function SignUpPage() {
                   card: "glass shadow-2xl border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl",
                   headerTitle: "text-gray-900 dark:text-gray-50",
                   headerSubtitle: "text-gray-600 dark:text-gray-300",
-                  socialButtonsBlockButton: "glass border-white/20 dark:border-white/10 hover:bg-white/80 dark:hover:bg-gray-800/80",
-                  formButtonPrimary: "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700",
-                  formFieldInput: "glass border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-gray-800/50 text-gray-900 dark:text-gray-50",
+                  socialButtonsBlockButton: "bg-white/95 dark:bg-gray-800/95 border-2 border-gray-200 dark:border-gray-600 hover:bg-white dark:hover:bg-gray-700 hover:shadow-xl hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-300 hover:scale-105 font-medium backdrop-blur-sm",
+                  socialButtonsBlockButtonText: "text-gray-900 dark:text-gray-100 font-semibold",
+                  socialButtonsBlockButtonArrow: "text-gray-900 dark:text-gray-100 opacity-100",
+                  formButtonPrimary: "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 hover:shadow-lg hover:scale-105 transition-all duration-300",
+                  formFieldInput: "glass border-gray-300 dark:border-gray-600 bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-50 focus:bg-white/80 dark:focus:bg-gray-800/80",
                   footerActionLink: "text-blue-600 dark:text-blue-400 hover:text-purple-600 dark:hover:text-purple-400",
                   identityPreviewText: "text-gray-900 dark:text-gray-50",
                   formFieldLabel: "text-gray-700 dark:text-gray-200"

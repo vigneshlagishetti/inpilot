@@ -111,13 +111,21 @@ export function ResumeUploader({
   }
 
   const handleRemove = () => {
+    // Clear resume
     setFileName('')
     setIsUploaded(false)
     setContent('')
     onContentExtracted('', '')
+    
+    // Clear job role and custom instructions
+    setJobRole('')
+    setCustomInstructions('')
+    onJobRoleChange('')
+    onCustomInstructionsChange('')
+    
     toast({
-      title: 'Content Removed',
-      description: 'Resume/document has been cleared.',
+      title: 'All Settings Cleared',
+      description: 'Resume, job role, and custom instructions have been removed.',
     })
   }
 
@@ -135,7 +143,7 @@ export function ResumeUploader({
                 className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
               >
                 <X className="w-4 h-4 mr-1" />
-                Remove
+                Clear All
               </Button>
             )}
           </div>

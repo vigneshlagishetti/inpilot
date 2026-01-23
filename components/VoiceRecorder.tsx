@@ -92,12 +92,12 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
             clearTimeout(silenceTimerRef.current)
           }
 
-          // Auto-stop after 2 seconds of silence
+          // Auto-stop after 1 second of silence
           silenceTimerRef.current = setTimeout(() => {
             if (isRecordingRef.current) {
               stopRecording()
             }
-          }, 2000)
+          }, 1000)
         }
       }
 
@@ -258,11 +258,11 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
       
       // Auto-restart even if no speech detected
       if (autoModeRef.current) {
-        console.log('Auto mode: restarting after no speech in 2 seconds')
+        console.log('Auto mode: restarting after no speech in 1 second')
         setTimeout(() => {
           console.log('Auto mode: restarting recording now')
           startRecording()
-        }, 2000)
+        }, 1000)
       }
     }
   }
@@ -382,23 +382,25 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
   return (
     <div className="space-y-4">
       {/* Auto Mode Toggle */}
-      <div className="flex items-center justify-center space-x-2 sm:space-x-3">
-        <span className="text-xs sm:text-sm font-medium">Continuous Mode</span>
+      <div className="flex items-center justify-center space-x-2 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-white/20 dark:border-white/10 hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-300 group">
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Continuous Mode</span>
         <button
           onClick={toggleAutoMode}
           aria-label={autoMode ? 'Turn off continuous mode' : 'Turn on continuous mode'}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            autoMode ? 'bg-blue-600' : 'bg-gray-200'
+          className={`relative inline-flex h-3.5 w-7 sm:h-5 sm:w-9 items-center rounded-full transition-all duration-300 hover:scale-105 ${
+            autoMode ? 'bg-gradient-to-r from-green-500 to-green-600 shadow-lg' : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
           }`}
         >
           <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-              autoMode ? 'translate-x-6' : 'translate-x-1'
+            className={`inline-block h-2.5 w-2.5 sm:h-3 sm:w-3 transform rounded-full bg-white transition-all duration-300 shadow-sm ${
+              autoMode ? 'translate-x-3.5 sm:translate-x-5 scale-110' : 'translate-x-0.5 sm:translate-x-1'
             }`}
           />
         </button>
-        <span className="text-xs text-muted-foreground">
-          {autoMode ? 'ON - Auto-listening' : 'OFF - Manual'}
+        <span className={`text-xs transition-colors duration-300 ${
+          autoMode ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-500 dark:text-gray-400'
+        }`}>
+          {autoMode ? 'ON' : 'Manual'}
         </span>
       </div>
 
@@ -409,25 +411,47 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
             onClick={resumeListening}
             variant="default"
             size="lg"
-            className="bg-green-600 hover:bg-green-700 h-11 sm:h-12"
+            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 hover:scale-105 transition-all duration-300 shadow-lg h-11 sm:h-12 group"
           >
-            Ready for Next Question →
+            Ready for Next Question
+            <span className="ml-2 group-hover:translate-x-1 transition-transform duration-300">→</span>
           </Button>
         </div>
       )}
 
-      <Card className={`transition-all duration-300 ${isRecording ? 'ring-2 ring-blue-500 shadow-lg' : ''}`}>
+      <Card className={`transition-all duration-500 ${isRecording ? 'ring-2 ring-blue-500 shadow-xl bg-blue-50/50 dark:bg-blue-950/20' : 'hover:shadow-lg'} group`}>
         <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col items-center space-y-4">
-            <Button
-              size="lg"
-              variant={isRecording ? 'destructive' : 'default'}
-              onClick={isRecording ? stopRecording : startRecording}
-              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full ${isRecording ? 'recording-pulse' : ''}`}
-              disabled={(autoMode && isRecording) || isPaused}
-            >
-              {isRecording ? <MicOff className="w-6 h-6 sm:w-8 sm:h-8" /> : <Mic className="w-6 h-6 sm:w-8 sm:h-8" />}
-            </Button>
+            <div className="relative">
+              {/* Animated ring for recording */}
+              {isRecording && (
+                <div className="absolute inset-0 rounded-full bg-red-500/20 animate-ping"></div>
+              )}
+              {/* Glow effect on hover */}
+              <div className={`absolute inset-0 rounded-full transition-all duration-300 ${
+                isRecording 
+                  ? 'bg-red-500/30 blur-xl' 
+                  : 'bg-blue-500/0 group-hover:bg-blue-500/30 blur-xl'
+              }`}></div>
+              
+              <Button
+                size="lg"
+                variant={isRecording ? 'destructive' : 'default'}
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full transition-all duration-300 ${
+                  isRecording 
+                    ? 'recording-pulse scale-110 shadow-2xl' 
+                    : 'hover:scale-110 hover:shadow-xl bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                } ${!isRecording ? 'group-hover:animate-pulse' : ''}`}
+                disabled={(autoMode && isRecording) || isPaused}
+              >
+                {isRecording ? (
+                  <MicOff className="w-6 h-6 sm:w-8 sm:h-8 animate-pulse" />
+                ) : (
+                  <Mic className="w-6 h-6 sm:w-8 sm:h-8 group-hover:scale-110 transition-transform duration-300" />
+                )}
+              </Button>
+            </div>
             
             <div className="text-center px-2">
               <p className="text-xs sm:text-sm font-medium">
@@ -435,7 +459,7 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
                   ? 'Paused - Read & explain your answer'
                   : autoMode 
                     ? (isRecording ? 'Listening... (Auto mode)' : 'Processing...') 
-                    : (isRecording ? 'Recording... (Stops after 2s silence)' : 'Click to start recording')
+                    : (isRecording ? 'Recording... (Stops after 1s silence)' : 'Click to start recording')
                 }
               </p>
               {isListening && !isPaused && (

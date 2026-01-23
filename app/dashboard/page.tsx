@@ -8,7 +8,7 @@ import { ResumeUploader } from '@/components/ResumeUploader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings } from 'lucide-react'
+import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { motion } from 'framer-motion'
 import { useTheme } from '@/components/ThemeProvider'
@@ -39,6 +39,7 @@ export default function DashboardPage() {
   const [resumeFileName, setResumeFileName] = useState<string>('')
   const [jobRole, setJobRole] = useState<string>('')
   const [customInstructions, setCustomInstructions] = useState<string>('')
+  const [loadingTip, setLoadingTip] = useState<string>('')
   const { toast } = useToast()
   const { theme, toggleTheme } = useTheme()
 
@@ -100,9 +101,38 @@ export default function DashboardPage() {
     localStorage.setItem('interviewAssistant_instructions', instructions)
   }
 
+  const handleClearAllSettings = () => {
+    // Clear state
+    setResumeContent('')
+    setResumeFileName('')
+    setJobRole('')
+    setCustomInstructions('')
+    
+    // Clear localStorage
+    localStorage.removeItem('interviewAssistant_resume')
+    localStorage.removeItem('interviewAssistant_fileName')
+    localStorage.removeItem('interviewAssistant_jobRole')
+    localStorage.removeItem('interviewAssistant_instructions')
+    
+    toast({
+      title: 'All Settings Cleared',
+      description: 'Your resume, job role, and custom instructions have been removed.',
+    })
+  }
+
   const handleTranscription = async (transcription: string) => {
     setCurrentQuestion(transcription)
     setIsLoading(true)
+
+    // Set a random loading tip
+    const tips = [
+      'Analyzing your question with AI...',
+      'Crafting a detailed response...',
+      'Processing with advanced AI...',
+      'Generating personalized answer...',
+      'AI is thinking deeply...',
+    ]
+    setLoadingTip(tips[Math.floor(Math.random() * tips.length)])
 
     // Use refs to get the latest values (avoids closure issue)
     const currentResumeContent = resumeContentRef.current
@@ -117,6 +147,7 @@ export default function DashboardPage() {
     console.log('Custom instructions:', currentInstructions)
 
     try {
+      console.log('Sending request to /api/generate-answer...')
       const response = await fetch('/api/generate-answer', {
         method: 'POST',
         headers: {
@@ -130,11 +161,17 @@ export default function DashboardPage() {
         }),
       })
 
+      console.log('Response status:', response.status)
+      console.log('Response ok:', response.ok)
+
       if (!response.ok) {
-        throw new Error('Failed to generate answer')
+        const errorData = await response.json().catch(() => ({}))
+        console.error('API error:', errorData)
+        throw new Error(errorData.error || 'Failed to generate answer')
       }
 
       const answer = await response.json()
+      console.log('Answer received:', answer)
       setCurrentAnswer(answer)
 
       // Add to history
@@ -187,15 +224,18 @@ export default function DashboardPage() {
             transition={{ duration: 0.5 }}
             className="flex items-center gap-2 sm:gap-3 min-w-0"
           >
-            <div className="p-1.5 sm:p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg sm:rounded-xl shrink-0">
-              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            <div className="relative shrink-0">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-lg sm:rounded-xl blur-md opacity-50 animate-pulse"></div>
+              <div className="relative p-1.5 sm:p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg sm:rounded-xl">
+                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent truncate">
-                AI Interview Assistant
+              <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 dark:from-blue-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent truncate tracking-tight">
+                Impilot
               </h1>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:block">
-                Practice with AI-powered voice assistance
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:block font-medium">
+                AI-Powered Interview Practice
               </p>
             </div>
           </motion.div>
@@ -223,21 +263,21 @@ export default function DashboardPage() {
       <main className="relative container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue="interview" className="w-full">
           {/* Tab Navigation */}
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-6 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-white/20 dark:border-white/10 p-1 h-auto">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/30 dark:border-white/20 p-1.5 h-auto shadow-lg hover:shadow-xl transition-all duration-300">
             <TabsTrigger 
               value="interview" 
-              className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-2.5"
+              className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
             >
-              <Mic2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Interview Practice</span>
-              <span className="sm:hidden">Interview</span>
+              <Mic2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+              <span className="hidden sm:inline font-medium">Interview Practice</span>
+              <span className="sm:hidden font-medium">Interview</span>
             </TabsTrigger>
             <TabsTrigger 
               value="settings" 
-              className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-2.5"
+              className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
             >
-              <Settings className="w-4 h-4" />
-              Settings
+              <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+              <span className="font-medium">Settings</span>
             </TabsTrigger>
           </TabsList>
 
@@ -253,10 +293,12 @@ export default function DashboardPage() {
                   transition={{ duration: 0.5 }}
                 >
                   <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
-                    <CardHeader className="p-4 sm:p-6">
+                    <CardHeader className="p-4 sm:p-6 bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/30 dark:to-purple-950/30">
                       <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
-                        <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-                        Ask Your Question
+                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
+                          <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent font-semibold">Ask Your Question</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 sm:p-6 pt-0">
@@ -288,10 +330,13 @@ export default function DashboardPage() {
                     transition={{ duration: 0.5, delay: 0.1 }}
                   >
                     <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
-                      <CardHeader className="p-4 sm:p-6">
+                      <CardHeader className="p-4 sm:p-6 bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/30 dark:to-pink-950/30">
                         <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
-                          <History className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
-                          Recent Questions
+                          <div className="p-1.5 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
+                            <History className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
+                          </div>
+                          <span className="bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent font-semibold">Recent Questions</span>
+                          <span className="ml-auto text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/50 rounded-full text-purple-700 dark:text-purple-300 font-medium">{history.length}</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-4 sm:p-6 pt-0">
@@ -308,7 +353,8 @@ export default function DashboardPage() {
                               <p className="text-sm font-medium line-clamp-2 text-gray-900 dark:text-gray-100">
                                 {item.question}
                               </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
                                 {item.timestamp.toLocaleTimeString()}
                               </p>
                             </button>
@@ -323,14 +369,31 @@ export default function DashboardPage() {
               {/* Right Panel - Answer Display */}
               <div className="lg:col-span-2">
             {isLoading ? (
-              <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl flex items-center justify-center min-h-[300px] sm:min-h-[400px]">
-                <CardContent className="text-center p-4 sm:p-6">
-                  <div className="relative">
-                    <div className="absolute inset-0 blur-xl bg-gradient-to-r from-blue-500 to-purple-600 opacity-20 animate-pulse"></div>
-                    <Loader2 className="relative w-10 h-10 sm:w-12 sm:h-12 animate-spin text-blue-500 dark:text-blue-400 mx-auto mb-4" />
+              <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl flex items-center justify-center min-h-[300px] sm:min-h-[400px] relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 animate-pulse"></div>
+                <CardContent className="text-center p-4 sm:p-6 relative z-10">
+                  <div className="relative inline-block">
+                    <div className="absolute inset-0 blur-2xl bg-gradient-to-r from-blue-500 to-purple-600 opacity-30 animate-pulse"></div>
+                    <div className="relative">
+                      <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 animate-spin text-blue-500 dark:text-blue-400 mx-auto mb-4" />
+                      <div className="absolute inset-0 animate-ping opacity-20">
+                        <Sparkles className="w-10 h-10 sm:w-12 sm:h-12 text-purple-500" />
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100">Generating your answer...</p>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-2">This may take a few seconds</p>
+                  <p className="text-base sm:text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Generating your answer...</p>
+                  <motion.p 
+                    key={loadingTip}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 font-medium"
+                  >
+                    {loadingTip}
+                  </motion.p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-3 flex items-center justify-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    Usually takes 3-5 seconds
+                  </p>
                 </CardContent>
               </Card>
             ) : currentAnswer ? (
@@ -346,20 +409,43 @@ export default function DashboardPage() {
                 <AnswerDisplay {...currentAnswer} />
               </motion.div>
             ) : (
-              <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl flex items-center justify-center min-h-[300px] sm:min-h-[400px]">
-                <CardContent className="text-center p-4 sm:p-6">
-                  <div className="relative mb-4">
-                    <div className="absolute inset-0 blur-2xl bg-gradient-to-r from-blue-500 to-purple-600 opacity-10"></div>
-                    <MessageSquare className="relative w-12 h-12 sm:w-16 sm:h-16 text-gray-300 dark:text-gray-600 mx-auto" />
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                    Ready to Practice!
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 px-4">
-                    Click the microphone button to start recording your question
-                  </p>
-                </CardContent>
-              </Card>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="relative"
+              >
+                <Card className="border-white/20 dark:border-white/10 bg-gradient-to-br from-white/80 to-blue-50/50 dark:from-gray-900/80 dark:to-blue-950/20 backdrop-blur-xl shadow-xl min-h-[300px] sm:min-h-[400px] flex items-center justify-center group hover:shadow-2xl transition-all duration-500 overflow-hidden">
+                  {/* Decorative background elements */}
+                  <div className="absolute top-4 right-4 w-20 h-20 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+                  <div className="absolute bottom-4 left-4 w-16 h-16 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
+                  
+                  <CardContent className="text-center p-6 sm:p-8 relative z-10">
+                    <motion.div
+                      animate={{ y: [0, -10, 0] }}
+                      transition={{ duration: 2, repeat: Infinity, repeatType: "loop" }}
+                      className="mb-6"
+                    >
+                      <div className="relative inline-block">
+                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full blur-xl opacity-30 animate-pulse"></div>
+                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                          <MessageSquare className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 dark:text-gray-500 group-hover:text-blue-500 transition-colors duration-300" />
+                        </div>
+                      </div>
+                    </motion.div>
+                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-3 group-hover:scale-105 transition-transform duration-300">
+                      Ready to Practice!
+                    </h3>
+                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-6">
+                      Click the microphone button to start recording your question
+                    </p>
+                    <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-blue-600 dark:text-blue-400">
+                      <Sparkles className="w-4 h-4 animate-pulse" />
+                      <span className="font-medium">AI-powered practice session</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
             )}
           </div>
         </div>
@@ -371,7 +457,7 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-4xl mx-auto"
+          className="max-w-4xl mx-auto space-y-6"
         >
           <ResumeUploader 
             onContentExtracted={handleResumeContent}
@@ -382,10 +468,49 @@ export default function DashboardPage() {
           />
           
           {resumeFileName && (
-            <div className="mt-6 p-4 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
-              <p className="text-sm text-green-800 dark:text-green-300">
-                ✓ Configuration saved! Switch to the <strong>Interview Practice</strong> tab to start.
-              </p>
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg shrink-0">
+                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
+                      Configuration Saved
+                    </p>
+                    <p className="text-sm text-green-800 dark:text-green-300">
+                      Switch to the <strong>Interview Practice</strong> tab to start practicing.
+                    </p>
+                    <div className="mt-3 space-y-1.5 text-xs text-green-700 dark:text-green-400">
+                      <p className="flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> Resume: <strong>{resumeFileName}</strong> ({resumeContent.length} characters)</p>
+                      {jobRole && <p className="flex items-center gap-2"><Briefcase className="w-3.5 h-3.5" /> Role: <strong>{jobRole}</strong></p>}
+                      {customInstructions && <p className="flex items-center gap-2"><PenTool className="w-3.5 h-3.5" /> Custom instructions added</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <Card className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base text-red-900 dark:text-red-100 flex items-center gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    Delete Settings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-red-800 dark:text-red-300">
+                    Remove all saved configuration including resume, job role, and custom instructions.
+                  </p>
+                  <Button
+                    onClick={handleClearAllSettings}
+                    variant="outline"
+                    className="w-full border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950 hover:text-red-900 dark:hover:text-red-100"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Clear All Settings
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           )}
         </motion.div>
