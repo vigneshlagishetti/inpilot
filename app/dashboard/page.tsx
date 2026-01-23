@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { UserButton } from '@clerk/nextjs'
+import { UserButton, useUser } from '@clerk/nextjs'
 import { VoiceRecorder } from '@/components/VoiceRecorder'
 import { AnswerDisplay } from '@/components/AnswerDisplay'
 import { ResumeUploader } from '@/components/ResumeUploader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle } from 'lucide-react'
+import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle, Mail, Send, ThumbsUp, X } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { motion } from 'framer-motion'
 import { useTheme } from '@/components/ThemeProvider'
@@ -29,6 +29,15 @@ interface QuestionAnswer {
   timestamp: Date
 }
 
+interface UserReview {
+  id: string
+  userName: string
+  userEmail: string
+  rating: number
+  text: string
+  timestamp: Date
+}
+
 export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -40,8 +49,13 @@ export default function DashboardPage() {
   const [jobRole, setJobRole] = useState<string>('')
   const [customInstructions, setCustomInstructions] = useState<string>('')
   const [loadingTip, setLoadingTip] = useState<string>('')
+  const [reviewText, setReviewText] = useState<string>('')
+  const [reviewRating, setReviewRating] = useState<number>(0)
+  const [userReviews, setUserReviews] = useState<UserReview[]>([])
+  const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' })
   const { toast } = useToast()
   const { theme, toggleTheme } = useTheme()
+  const { user } = useUser()
 
   // Use refs to always have the latest values (avoids closure issues)
   const resumeContentRef = useRef<string>('')
@@ -54,11 +68,19 @@ export default function DashboardPage() {
     const savedFileName = localStorage.getItem('interviewAssistant_fileName')
     const savedJobRole = localStorage.getItem('interviewAssistant_jobRole')
     const savedInstructions = localStorage.getItem('interviewAssistant_instructions')
+    const savedReviews = localStorage.getItem('impilot_userReviews')
     
     if (savedResume) setResumeContent(savedResume)
     if (savedFileName) setResumeFileName(savedFileName)
     if (savedJobRole) setJobRole(savedJobRole)
     if (savedInstructions) setCustomInstructions(savedInstructions)
+    if (savedReviews) {
+      try {
+        setUserReviews(JSON.parse(savedReviews))
+      } catch (error) {
+        console.error('Error parsing saved reviews:', error)
+      }
+    }
   }, [])
   
   // Update refs whenever state changes
@@ -99,6 +121,17 @@ export default function DashboardPage() {
   const handleCustomInstructionsChange = (instructions: string) => {
     setCustomInstructions(instructions)
     localStorage.setItem('interviewAssistant_instructions', instructions)
+  }
+
+  const handleDeleteReview = (reviewId: string) => {
+    const updatedReviews = userReviews.filter(review => review.id !== reviewId);
+    setUserReviews(updatedReviews);
+    localStorage.setItem('impilot_userReviews', JSON.stringify(updatedReviews));
+    
+    toast({
+      title: "Review Deleted",
+      description: "Your review has been removed.",
+    });
   }
 
   const handleClearAllSettings = () => {
@@ -245,6 +278,7 @@ export default function DashboardPage() {
               size="icon"
               onClick={toggleTheme}
               className="rounded-full hover:bg-white/50 dark:hover:bg-white/10 h-8 w-8 sm:h-10 sm:w-10"
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {theme === 'dark' ? (
                 <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
@@ -263,21 +297,34 @@ export default function DashboardPage() {
       <main className="relative container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <Tabs defaultValue="interview" className="w-full">
           {/* Tab Navigation */}
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/30 dark:border-white/20 p-1.5 h-auto shadow-lg hover:shadow-xl transition-all duration-300">
+          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-4 mb-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/30 dark:border-white/20 p-1.5 h-auto shadow-lg hover:shadow-xl transition-all duration-300">
             <TabsTrigger 
               value="interview" 
-              className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
+              className="flex items-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-2 sm:py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
             >
-              <Mic2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-              <span className="hidden sm:inline font-medium">Interview Practice</span>
-              <span className="sm:hidden font-medium">Interview</span>
+              <Mic2 className="w-3 h-3 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-xs sm:text-sm font-medium">Practice</span>
             </TabsTrigger>
             <TabsTrigger 
               value="settings" 
-              className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
+              className="flex items-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-2 sm:py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
             >
-              <Settings className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
-              <span className="font-medium">Settings</span>
+              <Settings className="w-3 h-3 sm:w-4 sm:h-4 group-hover:rotate-90 transition-transform duration-300" />
+              <span className="text-xs sm:text-sm font-medium">Settings</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="reviews" 
+              className="flex items-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-2 sm:py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
+            >
+              <Star className="w-3 h-3 sm:w-4 sm:h-4 group-hover:rotate-12 transition-transform duration-300" />
+              <span className="text-xs sm:text-sm font-medium">Reviews</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="contact" 
+              className="flex items-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-2 sm:py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
+            >
+              <Mail className="w-3 h-3 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-xs sm:text-sm font-medium">Contact</span>
             </TabsTrigger>
           </TabsList>
 
@@ -349,6 +396,7 @@ export default function DashboardPage() {
                                 setCurrentAnswer(item.answer)
                               }}
                               className="w-full text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 min-h-[44px]"
+                              aria-label={`View previous question: ${item.question.substring(0, 50)}${item.question.length > 50 ? '...' : ''}`}
                             >
                               <p className="text-sm font-medium line-clamp-2 text-gray-900 dark:text-gray-100">
                                 {item.question}
@@ -513,6 +561,257 @@ export default function DashboardPage() {
               </Card>
             </div>
           )}
+        </motion.div>
+      </TabsContent>
+
+      {/* Reviews Tab */}
+      <TabsContent value="reviews" className="mt-0">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-4xl mx-auto space-y-6"
+        >
+          {/* Submit Review */}
+          <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-300">
+            <CardHeader className="bg-gradient-to-r from-yellow-50/50 to-orange-50/50 dark:from-yellow-950/30 dark:to-orange-950/30">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
+                <div className="p-1.5 bg-yellow-100 dark:bg-yellow-900/50 rounded-lg">
+                  <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <span className="bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-400 dark:to-orange-400 bg-clip-text text-transparent font-semibold">Share Your Experience</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {/* Rating */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Your Rating
+                </label>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <button
+                      key={rating}
+                      onClick={() => setReviewRating(rating)}
+                      className="group"
+                      aria-label={`Rate ${rating} out of 5 stars`}
+                    >
+                      <Star 
+                        className={`w-6 h-6 transition-all duration-200 ${
+                          rating <= reviewRating 
+                            ? 'text-yellow-500 fill-current' 
+                            : 'text-gray-300 dark:text-gray-600 group-hover:text-yellow-300'
+                        } group-hover:scale-110`}
+                      />
+                    </button>
+                  ))}
+                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                    {reviewRating > 0 ? `${reviewRating} of 5 stars` : 'Click to rate'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Review Text */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Your Review
+                </label>
+                <textarea
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  placeholder="Tell us about your experience with Impilot..."
+                  className="w-full h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                />
+              </div>
+
+              <Button 
+                onClick={() => {
+                  if (reviewText.trim() && user) {
+                    const newReview: UserReview = {
+                      id: Date.now().toString(),
+                      userName: user.fullName || user.firstName || 'Anonymous',
+                      userEmail: user.primaryEmailAddress?.emailAddress || '',
+                      rating: reviewRating,
+                      text: reviewText,
+                      timestamp: new Date()
+                    };
+                    
+                    const updatedReviews = [newReview, ...userReviews];
+                    setUserReviews(updatedReviews);
+                    localStorage.setItem('impilot_userReviews', JSON.stringify(updatedReviews));
+                    
+                    toast({
+                      title: "Review Submitted!",
+                      description: "Thank you for your feedback. It helps us improve Impilot.",
+                    });
+                    setReviewText('');
+                    setReviewRating(0);
+                  }
+                }}
+                className="w-full sm:w-auto bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 hover:scale-105 transition-all duration-300 shadow-lg"
+                disabled={!reviewText.trim() || !user || reviewRating === 0}
+              >
+                <ThumbsUp className="w-4 h-4 mr-2" />
+                Submit Review
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Sample Reviews */}
+          <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
+                <div className="p-1.5 bg-green-100 dark:bg-green-900/50 rounded-lg">
+                  <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
+                </div>
+                <span className="bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent font-semibold">User Reviews</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {userReviews.length > 0 ? (
+                userReviews.map((review, index) => (
+                <motion.div 
+                  key={index} 
+                  className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200"
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">{review.userName}</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{review.userEmail}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        {[...Array(review.rating)].map((_, i) => (
+                          <Star key={i} className="w-4 h-4 text-yellow-500 fill-current" />
+                        ))}
+                        <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">
+                          {new Date(review.timestamp).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {user?.primaryEmailAddress?.emailAddress === review.userEmail && (
+                        <button
+                          onClick={() => handleDeleteReview(review.id)}
+                          className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-all duration-200 group"
+                          title="Delete your review"
+                          aria-label="Delete your review"
+                        >
+                          <X className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{review.text}</p>
+                </motion.div>
+              ))
+              ) : (
+                <div className="text-center py-8">
+                  <Star className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-500 dark:text-gray-400 mb-2">No reviews yet</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">Be the first to share your experience!</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </TabsContent>
+
+      {/* Contact Tab */}
+      <TabsContent value="contact" className="mt-0">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-4xl mx-auto space-y-6"
+        >
+          {/* Contact Form */}
+          <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-300">
+            <CardHeader className="bg-gradient-to-r from-blue-50/50 to-cyan-50/50 dark:from-blue-950/30 dark:to-cyan-950/30">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
+                <div className="p-1.5 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
+                  <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent font-semibold">Get in Touch</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Your Name
+                  </label>
+                  <input
+                    type="text"
+                    value={contactForm.name}
+                    onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter your name"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={contactForm.email}
+                    onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="Enter your email"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Message
+                </label>
+                <textarea
+                  value={contactForm.message}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
+                  placeholder="How can we help you?"
+                  className="w-full h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                />
+              </div>
+
+              <Button 
+                onClick={() => {
+                  if (contactForm.name && contactForm.email && contactForm.message) {
+                    toast({
+                      title: "Message Sent!",
+                      description: "We'll get back to you as soon as possible.",
+                    });
+                    setContactForm({ name: '', email: '', message: '' });
+                  }
+                }}
+                className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 hover:scale-105 transition-all duration-300 shadow-lg"
+                disabled={!contactForm.name || !contactForm.email || !contactForm.message}
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Send Message
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Developer Info */}
+          <Card className="border-white/20 dark:border-white/10 bg-gradient-to-br from-white/80 to-purple-50/30 dark:from-gray-900/80 dark:to-purple-950/20 backdrop-blur-xl shadow-xl">
+            <CardContent className="p-6 text-center">
+              <motion.div 
+                className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+              >
+                <span className="text-2xl font-bold text-white">LV</span>
+              </motion.div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Lagishetti Vignesh</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">Full Stack Developer & AI Enthusiast</p>
+              <p className="text-sm text-gray-500 dark:text-gray-500 max-w-md mx-auto">
+                Passionate about creating AI-powered solutions that help people achieve their goals. 
+                Always open to feedback and collaboration!
+              </p>
+            </CardContent>
+          </Card>
         </motion.div>
       </TabsContent>
     </Tabs>
