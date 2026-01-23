@@ -81,11 +81,10 @@ export default function DashboardPage() {
   // Load all reviews from API/database
   const loadReviews = async () => {
     try {
-      // This would call your backend API
-      // For now, we'll use localStorage as a temporary shared storage simulation
-      const allReviews = localStorage.getItem('impilot_shared_reviews')
-      if (allReviews) {
-        setUserReviews(JSON.parse(allReviews))
+      const response = await fetch('/api/reviews')
+      if (response.ok) {
+        const data = await response.json()
+        setUserReviews(data.reviews || [])
       }
     } catch (error) {
       console.error('Error loading reviews:', error)
@@ -93,13 +92,22 @@ export default function DashboardPage() {
   }
   
   // Save review to shared storage (API/database)
-  const saveReviewToShared = async (reviews: UserReview[]) => {
+  const saveReviewToShared = async (newReview: UserReview) => {
     try {
-      // This would call your backend API
-      // For now, we'll use localStorage as a temporary shared storage simulation
-      localStorage.setItem('impilot_shared_reviews', JSON.stringify(reviews))
+      const response = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newReview),
+      })
+      
+      if (response.ok) {
+        // Reload reviews to get latest data
+        await loadReviews()
+      }
     } catch (error) {
-      console.error('Error saving reviews:', error)
+      console.error('Error saving review:', error)
     }
   }
   
@@ -144,16 +152,31 @@ export default function DashboardPage() {
   }
 
   const handleDeleteReview = async (reviewId: string) => {
-    const updatedReviews = userReviews.filter(review => review.id !== reviewId);
-    setUserReviews(updatedReviews);
-    
-    // Save to shared storage
-    await saveReviewToShared(updatedReviews);
-    
-    toast({
-      title: "Review Deleted",
-      description: "Your review has been removed.",
-    });
+    try {
+      const response = await fetch('/api/reviews', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reviewId }),
+      })
+      
+      if (response.ok) {
+        // Reload reviews to get latest data
+        await loadReviews()
+        toast({
+          title: "Review Deleted",
+          description: "Your review has been removed.",
+        })
+      }
+    } catch (error) {
+      console.error('Error deleting review:', error)
+      toast({
+        title: "Error",
+        description: "Failed to delete review. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleClearAllSettings = () => {
@@ -658,11 +681,8 @@ export default function DashboardPage() {
                       timestamp: new Date()
                     };
                     
-                    const updatedReviews = [newReview, ...userReviews];
-                    setUserReviews(updatedReviews);
-                    
-                    // Save to shared storage
-                    await saveReviewToShared(updatedReviews);
+                    // Save to shared API storage
+                    await saveReviewToShared(newReview);
                     
                     toast({
                       title: "Review Submitted!",
