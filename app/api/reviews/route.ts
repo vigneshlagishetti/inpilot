@@ -59,12 +59,42 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { reviewId } = await request.json()
+    const { reviewId, userEmail } = await request.json()
     
-    const { error } = await supabase
+    // Check if user is admin (your email)
+    const isAdmin = userEmail === 'lvigneshbunty789@gmail.com'
+    
+    if (!isAdmin) {
+      // For non-admin users, verify the review exists and belongs to them
+      const { data: existingReview, error: fetchError } = await supabase
+        .from('reviews')
+        .select('user_email')
+        .eq('id', reviewId)
+        .single()
+      
+      if (fetchError) {
+        console.error('Error fetching review for validation:', fetchError)
+        return NextResponse.json({ error: 'Review not found' }, { status: 404 })
+      }
+      
+      // Verify ownership for non-admin users
+      if (existingReview.user_email !== userEmail) {
+        return NextResponse.json({ error: 'Unauthorized: You can only delete your own reviews' }, { status: 403 })
+      }
+    }
+    
+    // Delete the review (admin can delete any, users only their own)
+    const deleteQuery = supabase
       .from('reviews')
       .delete()
       .eq('id', reviewId)
+    
+    // For non-admin users, add ownership check to delete query
+    if (!isAdmin) {
+      deleteQuery.eq('user_email', userEmail)
+    }
+    
+    const { error } = await deleteQuery
 
     if (error) {
       console.error('Supabase error:', error)

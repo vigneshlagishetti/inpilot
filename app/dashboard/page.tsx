@@ -8,7 +8,7 @@ import { ResumeUploader } from '@/components/ResumeUploader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle, Mail, Send, ThumbsUp, X } from 'lucide-react'
+import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle, Mail, Send, ThumbsUp, X, Upload } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { motion } from 'framer-motion'
 import { useTheme } from '@/components/ThemeProvider'
@@ -52,7 +52,7 @@ export default function DashboardPage() {
   const [reviewText, setReviewText] = useState<string>('')
   const [reviewRating, setReviewRating] = useState<number>(0)
   const [userReviews, setUserReviews] = useState<UserReview[]>([])
-  const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' })
+  const [contactForm, setContactForm] = useState({ name: '', email: '', message: '', files: [] as File[] })
   const { toast } = useToast()
   const { theme, toggleTheme } = useTheme()
   const { user } = useUser()
@@ -162,13 +162,27 @@ export default function DashboardPage() {
 
   const handleDeleteReview = async (reviewId: string) => {
     try {
+      if (!user?.primaryEmailAddress?.emailAddress) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to delete reviews.",
+          variant: "destructive",
+        })
+        return
+      }
+      
       const response = await fetch('/api/reviews', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ reviewId }),
+        body: JSON.stringify({ 
+          reviewId,
+          userEmail: user.primaryEmailAddress.emailAddress 
+        }),
       })
+      
+      const data = await response.json()
       
       if (response.ok) {
         // Reload reviews to get latest data
@@ -176,6 +190,12 @@ export default function DashboardPage() {
         toast({
           title: "Review Deleted",
           description: "Your review has been removed.",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to delete review. You can only delete your own reviews.",
+          variant: "destructive",
         })
       }
     } catch (error) {
@@ -628,7 +648,7 @@ export default function DashboardPage() {
         >
           {/* Submit Review */}
           <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl hover:shadow-2xl transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-yellow-50/50 to-orange-50/50 dark:from-yellow-950/30 dark:to-orange-950/30">
+            <CardHeader className="bg-gradient-to-r from-yellow-50/50 to-orange-50/50 dark:from-yellow-950/30 dark:to-orange-950/30 p-4 sm:p-6">
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
                 <div className="p-1.5 bg-yellow-100 dark:bg-yellow-900/50 rounded-lg">
                   <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 dark:text-yellow-400" />
@@ -636,30 +656,32 @@ export default function DashboardPage() {
                 <span className="bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-400 dark:to-orange-400 bg-clip-text text-transparent font-semibold">Share Your Experience</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-4 sm:p-6 space-y-4">
               {/* Rating */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Your Rating
                 </label>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <button
-                      key={rating}
-                      onClick={() => setReviewRating(rating)}
-                      className="group"
-                      aria-label={`Rate ${rating} out of 5 stars`}
-                    >
-                      <Star 
-                        className={`w-6 h-6 transition-all duration-200 ${
-                          rating <= reviewRating 
-                            ? 'text-yellow-500 fill-current' 
-                            : 'text-gray-300 dark:text-gray-600 group-hover:text-yellow-300'
-                        } group-hover:scale-110`}
-                      />
-                    </button>
-                  ))}
-                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((rating) => (
+                      <button
+                        key={rating}
+                        onClick={() => setReviewRating(rating)}
+                        className="group p-1"
+                        aria-label={`Rate ${rating} out of 5 stars`}
+                      >
+                        <Star 
+                          className={`w-6 h-6 sm:w-7 sm:h-7 transition-all duration-200 ${
+                            rating <= reviewRating 
+                              ? 'text-yellow-500 fill-current' 
+                              : 'text-gray-300 dark:text-gray-600 group-hover:text-yellow-300'
+                          } group-hover:scale-110`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1 sm:mt-0 sm:ml-2">
                     {reviewRating > 0 ? `${reviewRating} of 5 stars` : 'Click to rate'}
                   </span>
                 </div>
@@ -674,7 +696,8 @@ export default function DashboardPage() {
                   value={reviewText}
                   onChange={(e) => setReviewText(e.target.value)}
                   placeholder="Tell us about your experience with Impilot..."
-                  className="w-full h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  className="w-full h-24 sm:h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                  rows={3}
                 />
               </div>
 
@@ -712,7 +735,7 @@ export default function DashboardPage() {
 
           {/* Sample Reviews */}
           <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
-            <CardHeader>
+            <CardHeader className="p-4 sm:p-6">
               <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
                 <div className="p-1.5 bg-green-100 dark:bg-green-900/50 rounded-lg">
                   <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
@@ -720,44 +743,54 @@ export default function DashboardPage() {
                 <span className="bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent font-semibold">User Reviews</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 sm:space-y-4 p-4 sm:p-6">
               {userReviews.length > 0 ? (
-                userReviews.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((review, index) => (
+                userReviews.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((review, index) => {
+                  // Debug logging
+                  console.log('User email:', user?.primaryEmailAddress?.emailAddress)
+                  console.log('Review email:', review.userEmail)
+                  console.log('Is admin?', user?.primaryEmailAddress?.emailAddress === 'vigneshlagishetti789@gmail.com')
+                  
+                  return (
                 <motion.div 
                   key={index} 
-                  className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200"
+                  className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200"
                   whileHover={{ scale: 1.02 }}
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">{review.userName}</h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{review.userEmail}</p>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100 truncate">{review.userName}</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{review.userEmail}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0">
                       <div className="flex items-center gap-1">
-                        {[...Array(review.rating)].map((_, i) => (
-                          <Star key={i} className="w-4 h-4 text-yellow-500 fill-current" />
-                        ))}
-                        <span className="ml-1 text-xs text-gray-400 dark:text-gray-500">
+                        <div className="flex items-center">
+                          {[...Array(review.rating)].map((_, i) => (
+                            <Star key={i} className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 fill-current" />
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
                           {new Date(review.timestamp).toLocaleDateString()}
                         </span>
                       </div>
-                      {user?.primaryEmailAddress?.emailAddress === review.userEmail && (
+                      {(user?.primaryEmailAddress?.emailAddress === 'lvigneshbunty789@gmail.com' || 
+                        user?.primaryEmailAddress?.emailAddress === review.userEmail) && (
                         <button
                           onClick={() => handleDeleteReview(review.id)}
-                          className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-all duration-200 group"
-                          title="Delete your review"
-                          aria-label="Delete your review"
+                          className="p-1.5 sm:p-1 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-all duration-200 group flex-shrink-0"
+                          title={user?.primaryEmailAddress?.emailAddress === 'lvigneshbunty789@gmail.com' ? "Delete review (Admin)" : "Delete your review"}
+                          aria-label={user?.primaryEmailAddress?.emailAddress === 'lvigneshbunty789@gmail.com' ? "Delete review (Admin)" : "Delete your review"}
                         >
                           <X className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
                         </button>
                       )}
                     </div>
                   </div>
-                  <p className="text-sm text-gray-700 dark:text-gray-300">{review.text}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 break-words">{review.text}</p>
                 </motion.div>
-              ))
+                  )
+                })
               ) : (
                 <div className="text-center py-8">
                   <Star className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
@@ -788,29 +821,29 @@ export default function DashboardPage() {
                 <span className="bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent font-semibold">Get in Touch</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Your Name
+                    Your Name *
                   </label>
                   <input
                     type="text"
                     value={contactForm.name}
                     onChange={(e) => setContactForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter your name"
+                    placeholder="Enter your full name"
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Email Address
+                    Email Address *
                   </label>
                   <input
                     type="email"
                     value={contactForm.email}
                     onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="Enter your email"
+                    placeholder="Enter your email address"
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   />
                 </div>
@@ -818,31 +851,119 @@ export default function DashboardPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Message
+                  What's the problem? *
                 </label>
                 <textarea
                   value={contactForm.message}
                   onChange={(e) => setContactForm(prev => ({ ...prev, message: e.target.value }))}
-                  placeholder="How can we help you?"
-                  className="w-full h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Describe the issue you're facing, feature request, or feedback..."
+                  className="w-full h-24 sm:h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  rows={4}
                 />
               </div>
 
+              {/* File Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Attach Files/Photos (Optional)
+                </label>
+                <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 sm:p-6 text-center hover:border-blue-400 dark:hover:border-blue-500 transition-colors duration-200">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.txt"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        setContactForm(prev => ({ ...prev, files: Array.from(e.target.files || []) }))
+                      }
+                    }}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <div className="space-y-2">
+                      <Upload className="w-8 h-8 mx-auto text-gray-400" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Click to upload or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        Images, PDFs, Documents (Max 10MB each)
+                      </p>
+                    </div>
+                  </label>
+                </div>
+                {contactForm.files.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Selected files:
+                    </p>
+                    <div className="space-y-1">
+                      {contactForm.files.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                          <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
+                          <button
+                            onClick={() => {
+                              setContactForm(prev => ({
+                                ...prev,
+                                files: prev.files.filter((_, i) => i !== index)
+                              }))
+                            }}
+                            className="text-red-500 hover:text-red-700 p-1"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <Button 
-                onClick={() => {
+                onClick={async () => {
                   if (contactForm.name && contactForm.email && contactForm.message) {
-                    toast({
-                      title: "Message Sent!",
-                      description: "We'll get back to you as soon as possible.",
-                    });
-                    setContactForm({ name: '', email: '', message: '' });
+                    try {
+                      const formData = new FormData()
+                      formData.append('name', contactForm.name)
+                      formData.append('email', contactForm.email)
+                      formData.append('message', contactForm.message)
+                      
+                      // Add files if any
+                      contactForm.files.forEach((file, index) => {
+                        formData.append(`file_${index}`, file)
+                      })
+                      
+                      const response = await fetch('/api/contact', {
+                        method: 'POST',
+                        body: formData
+                      })
+                      
+                      if (response.ok) {
+                        toast({
+                          title: "Message Sent!",
+                          description: "Your message has been sent directly to the developer. You'll receive a response soon.",
+                        })
+                        setContactForm({ name: '', email: '', message: '', files: [] })
+                        // Reset file input
+                        const fileInput = document.getElementById('file-upload') as HTMLInputElement
+                        if (fileInput) fileInput.value = ''
+                      } else {
+                        throw new Error('Failed to send message')
+                      }
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to send message. Please try again later.",
+                        variant: "destructive"
+                      })
+                    }
                   }
                 }}
                 className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 hover:scale-105 transition-all duration-300 shadow-lg"
                 disabled={!contactForm.name || !contactForm.email || !contactForm.message}
               >
                 <Send className="w-4 h-4 mr-2" />
-                Send Message
+                Send Message to Developer
               </Button>
             </CardContent>
           </Card>
@@ -850,19 +971,94 @@ export default function DashboardPage() {
           {/* Developer Info */}
           <Card className="border-white/20 dark:border-white/10 bg-gradient-to-br from-white/80 to-purple-50/30 dark:from-gray-900/80 dark:to-purple-950/20 backdrop-blur-xl shadow-xl">
             <CardContent className="p-6 text-center">
-              <motion.div 
+              <motion.div
                 className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 transition={{ type: "spring", stiffness: 400, damping: 10 }}
               >
-                <span className="text-2xl font-bold text-white">LV</span>
+                <span className="text-2xl font-bold text-white">
+                  {user?.firstName?.charAt(0) || user?.emailAddresses[0]?.emailAddress?.charAt(0)?.toUpperCase() || 'U'}
+                  {user?.lastName?.charAt(0) || ''}
+                </span>
               </motion.div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Lagishetti Vignesh</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">Full Stack Developer & AI Enthusiast</p>
-              <p className="text-sm text-gray-500 dark:text-gray-500 max-w-md mx-auto">
-                Passionate about creating AI-powered solutions that help people achieve their goals. 
-                Always open to feedback and collaboration!
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                {user?.firstName && user?.lastName 
+                  ? `${user.firstName} ${user.lastName}`
+                  : user?.firstName 
+                  ? user.firstName
+                  : user?.emailAddresses[0]?.emailAddress?.split('@')[0] || 'User'
+                }
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                {user?.publicMetadata?.jobTitle || 'Impilot User'}
               </p>
+              <p className="text-sm text-gray-500 dark:text-gray-500 max-w-md mx-auto mb-6">
+                Welcome to Impilot! Your AI-powered voice assistant for smart conversations and productivity.
+                Share your feedback to help us improve!
+              </p>
+              
+              {/* Developer Social Links - Only show for admin user */}
+              {user?.emailAddresses[0]?.emailAddress === 'lvigneshbunty789@gmail.com' && (
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                  <p className="text-xs text-gray-400 dark:text-gray-600 mb-4 text-center">
+                    Connect with the Developer
+                  </p>
+                  <div className="flex justify-center space-x-6">
+                    {/* GitHub */}
+                    <motion.a
+                      href="https://github.com/vigneshlagishetti"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center w-12 h-12 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl hover:bg-black dark:hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-xl"
+                      whileHover={{ scale: 1.1, y: -3, rotate: 2 }}
+                      whileTap={{ scale: 0.95 }}
+                      title="GitHub Profile"
+                    >
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                      </svg>
+                    </motion.a>
+
+                    {/* LinkedIn */}
+                    <motion.a
+                      href="https://www.linkedin.com/in/vignesh-lagishetti-69a102219/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center w-12 h-12 bg-[#0077B5] text-white rounded-xl hover:bg-[#005885] transition-all duration-300 shadow-lg hover:shadow-xl"
+                      whileHover={{ scale: 1.1, y: -3, rotate: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      title="LinkedIn Profile"
+                    >
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                      </svg>
+                    </motion.a>
+
+                    {/* Portfolio Website */}
+                    <motion.a
+                      href="https://www.vigneshlagishetti.me/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500 text-white rounded-xl hover:from-purple-700 hover:via-pink-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl"
+                      whileHover={{ scale: 1.1, y: -3, rotate: 2 }}
+                      whileTap={{ scale: 0.95 }}
+                      title="Portfolio Website"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                      </svg>
+                    </motion.a>
+                  </div>
+                      whileHover={{ scale: 1.1, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4.083 9h1.946c.089-1.546.383-2.97.837-4.118A6.004 6.004 0 004.083 9zM10 2a8 8 0 100 16 8 8 0 000-16zm0 2c-.076 0-.232.032-.465.262-.238.234-.497.623-.737 1.182-.389.907-.673 2.142-.766 3.556h3.936c-.093-1.414-.377-2.649-.766-3.556-.24-.56-.5-.948-.737-1.182C10.232 4.032 10.076 4 10 4zm3.971 5c-.089-1.546-.383-2.97-.837-4.118A6.004 6.004 0 0115.917 9h-1.946zm-2.003 2H8.032c.093 1.414.377 2.649.766 3.556.24.56.5.948.737 1.182.233.23.389.262.465.262.076 0 .232-.032.465-.262.238-.234.498-.623.737-1.182.389-.907.673-2.142.766-3.556zm1.166 4.118c.454-1.147.748-2.572.837-4.118h1.946a6.004 6.004 0 01-2.783 4.118zm-6.268 0C6.412 13.97 6.118 12.546 6.03 11H4.083a6.004 6.004 0 002.783 4.118z" clipRule="evenodd" />
+                      </svg>
+                    </motion.a>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

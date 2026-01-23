@@ -27,6 +27,9 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
   const isPausedRef = useRef(false)
   const isInitializedRef = useRef(false)
   const isMobile = useRef(false)
+  const lastProcessedResultRef = useRef('')
+  const resultIndexRef = useRef(0)
+  const isProcessingRef = useRef(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -49,111 +52,219 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
     isMobile.current = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
     console.log('Device type:', isMobile.current ? 'Mobile' : 'Desktop')
     
-    // Check if browser supports Web Speech API
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-      
-      if (!SpeechRecognition) {
+    // Check microphone permissions first (especially important on mobile)
+    const checkMicrophoneAccess = async () => {
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          console.log('Microphone access granted')
+          // Stop the stream immediately, we just needed to check permission
+          stream.getTracks().forEach(track => track.stop())
+          return true
+        }
+      } catch (error) {
+        console.error('Microphone access error:', error)
         toast({
-          title: 'Browser Not Supported',
-          description: 'Your browser does not support speech recognition. Please use Chrome or Edge.',
+          title: 'Microphone Access Required',
+          description: 'Please allow microphone access and reload the page.',
           variant: 'destructive',
         })
-        return
+        return false
       }
-
-      // Clean up any existing recognition
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop()
-          recognitionRef.current = null
-        } catch (e) {
-          console.log('Previous recognition cleanup:', e)
-        }
-      }
-
-      const recognition = new SpeechRecognition()
-      recognition.continuous = true
-      recognition.interimResults = true
-      recognition.lang = 'en-US'
-      
-      // Mobile-specific settings
+      return true
+    }
+    
+    // Initialize speech recognition
+    const initializeSpeechRecognition = async () => {
+      // Check microphone access first
       if (isMobile.current) {
-        recognition.maxAlternatives = 1
-        console.log('Mobile optimizations applied')
+        const hasAccess = await checkMicrophoneAccess()
+        if (!hasAccess) return
       }
+      
+      // Check if browser supports Web Speech API
+      if (typeof window !== 'undefined') {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        
+        if (!SpeechRecognition) {
+          toast({
+            title: 'Browser Not Supported',
+            description: 'Your browser does not support speech recognition. Please use Chrome or Edge.',
+            variant: 'destructive',
+          })
+          return
+        }
+
+        // Clean up any existing recognition
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.stop()
+            recognitionRef.current = null
+          } catch (e) {
+            console.log('Previous recognition cleanup:', e)
+          }
+        }
+
+        const recognition = new SpeechRecognition()
+        recognition.continuous = true
+        recognition.interimResults = true
+        recognition.lang = 'en-US'
+        
+        // Mobile-specific settings
+        if (isMobile.current) {
+          recognition.maxAlternatives = 1
+          console.log('Mobile optimizations applied')
+        }
 
       recognition.onstart = () => {
         setIsListening(true)
-        console.log('Speech recognition started')
+        console.log('Speech recognition started successfully')
+        
+        // On mobile, give user feedback that recording is active
+        if (isMobile.current && !autoModeRef.current) {
+          toast({
+            title: 'Listening...',
+            description: 'Speak now, the microphone is active.',
+          })
+        }
+      }
+
+      recognition.onaudiostart = () => {
+        console.log('Audio input started - microphone is working')
+      }
+
+      recognition.onspeechstart = () => {
+        console.log('Speech detected - user is speaking')
+      }
+
+      recognition.onspeechend = () => {
+        console.log('Speech ended - user stopped speaking')
+      }
+
+      recognition.onaudioend = () => {
+        console.log('Audio input ended')
       }
 
       recognition.onresult = (event: any) => {
-        // Prevent processing if not actively recording
-        if (!isRecordingRef.current) return
-        
-        let currentInterim = ''
-        let currentFinal = ''
-        
-        // Process only new results to prevent duplicates
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcriptPiece = event.results[i][0].transcript
-          if (event.results[i].isFinal) {
-            currentFinal += transcriptPiece + ' '
-          } else {
-            currentInterim += transcriptPiece
-          }
+        // Prevent processing if not actively recording or already processing
+        if (!isRecordingRef.current || isProcessingRef.current) {
+          console.log('Skipping result processing - not recording or already processing')
+          return
         }
-
-        // Update interim transcript for real-time display
-        if (currentInterim) {
-          setInterimTranscript(currentInterim)
-        }
-
-        if (currentFinal) {
-          const cleanFinal = currentFinal.trim()
-          console.log('Final transcript piece:', cleanFinal)
+        
+        isProcessingRef.current = true
+        
+        try {
+          let currentInterim = ''
+          let newFinalText = ''
           
-          setTranscript((prev) => {
-            // Prevent duplicate additions
-            const newText = prev + (prev ? ' ' : '') + cleanFinal
-            transcriptRef.current = newText
-            console.log('Updated transcript:', newText)
-            return newText
-          })
-          setInterimTranscript('')
-          
-          // Reset silence timer when speech is detected
-          if (silenceTimerRef.current) {
-            clearTimeout(silenceTimerRef.current)
-          }
-
-          // Auto-stop after 1 second of silence (longer on mobile)
-          const silenceDelay = isMobile.current ? 1500 : 1000
-          silenceTimerRef.current = setTimeout(() => {
-            if (isRecordingRef.current) {
-              console.log('Silence timeout triggered')
-              stopRecording()
+          // Process all results to avoid fragmentation
+          for (let i = 0; i < event.results.length; i++) {
+            const transcriptPiece = event.results[i][0].transcript.trim()
+            
+            if (event.results[i].isFinal) {
+              // Check for duplicates only if we have previous content
+              if (transcriptPiece && !lastProcessedResultRef.current.includes(transcriptPiece)) {
+                newFinalText += transcriptPiece + ' '
+                lastProcessedResultRef.current += transcriptPiece + ' '
+                console.log('Added final text piece:', transcriptPiece)
+              }
+            } else {
+              currentInterim += transcriptPiece + ' '
             }
-          }, silenceDelay)
+          }
+
+          // Update interim transcript for real-time display
+          if (currentInterim.trim() && currentInterim.trim() !== interimTranscript.trim()) {
+            setInterimTranscript(currentInterim.trim())
+            console.log('Updated interim:', currentInterim.trim())
+          }
+
+          if (newFinalText.trim()) {
+            const cleanFinal = newFinalText.trim()
+            console.log('Processing new final text:', cleanFinal)
+            
+            setTranscript((prev) => {
+              const newText = prev + (prev ? ' ' : '') + cleanFinal
+              transcriptRef.current = newText
+              console.log('Updated full transcript:', newText)
+              return newText
+            })
+            
+            // Only clear interim if we have final text
+            if (cleanFinal) {
+              setInterimTranscript('')
+            }
+            
+            // Reset silence timer when speech is detected
+            if (silenceTimerRef.current) {
+              clearTimeout(silenceTimerRef.current)
+            }
+
+            // Auto-stop after silence - shorter delay in continuous mode
+            const silenceDelay = autoModeRef.current 
+              ? 1000 // 1 second in continuous mode 
+              : (isMobile.current ? 4000 : 3000) // Longer delay in manual mode
+            silenceTimerRef.current = setTimeout(() => {
+              if (isRecordingRef.current) {
+                console.log('Silence timeout triggered after', silenceDelay, 'ms')
+                stopRecording()
+              }
+            }, silenceDelay)
+          }
+        } finally {
+          isProcessingRef.current = false
         }
       }
 
       recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error)
-        if (event.error === 'no-speech') {
-          toast({
-            title: 'No Speech Detected',
-            description: 'Please speak clearly into your microphone.',
-          })
-        } else if (event.error === 'not-allowed') {
-          toast({
-            title: 'Microphone Access Denied',
-            description: 'Please allow microphone access in your browser settings.',
-            variant: 'destructive',
-          })
-          setIsRecording(false)
-          onRecordingStateChange(false)
+        console.error('Speech recognition error:', event.error, event)
+        
+        switch (event.error) {
+          case 'no-speech':
+            if (isMobile.current) {
+              toast({
+                title: 'No Speech Detected',
+                description: 'Try speaking louder or closer to your microphone. Make sure microphone access is allowed.',
+              })
+            } else {
+              toast({
+                title: 'No Speech Detected',
+                description: 'Please speak clearly into your microphone.',
+              })
+            }
+            break
+          case 'not-allowed':
+          case 'service-not-allowed':
+            toast({
+              title: 'Microphone Access Denied',
+              description: 'Please allow microphone access in your browser settings and reload the page.',
+              variant: 'destructive',
+            })
+            setIsRecording(false)
+            onRecordingStateChange(false)
+            break
+          case 'network':
+            toast({
+              title: 'Network Error',
+              description: 'Please check your internet connection and try again.',
+              variant: 'destructive',
+            })
+            break
+          case 'audio-capture':
+            toast({
+              title: 'Audio Capture Error',
+              description: isMobile.current 
+                ? 'Microphone error. Try closing other apps using the microphone and refresh the page.'
+                : 'Please check your microphone and try again.',
+              variant: 'destructive',
+            })
+            setIsRecording(false)
+            onRecordingStateChange(false)
+            break
+          default:
+            console.error('Unhandled speech recognition error:', event.error)
+            break
         }
       }
 
@@ -161,16 +272,23 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
         setIsListening(false)
         console.log('Recognition ended, isRecording:', isRecordingRef.current, 'isMobile:', isMobile.current)
         
-        // On mobile, be more careful about restarting to prevent loops
-        if (isRecordingRef.current && recognitionRef.current) {
-          const restartDelay = isMobile.current ? 500 : 100
+        // On mobile, prevent rapid restarts that can cause duplicates
+        if (isRecordingRef.current && recognitionRef.current && !isProcessingRef.current) {
+          const restartDelay = isMobile.current ? 1000 : 100 // Much longer delay on mobile
+          console.log(`Scheduling restart in ${restartDelay}ms`)
+          
           setTimeout(() => {
             if (isRecordingRef.current && recognitionRef.current) {
               try {
-                console.log('Restarting recognition...')
+                console.log('Attempting to restart recognition...')
                 recognitionRef.current.start()
               } catch (e) {
                 console.log('Could not restart recognition:', e)
+                // On mobile, if restart fails, stop recording to prevent loops
+                if (isMobile.current) {
+                  setIsRecording(false)
+                  onRecordingStateChange(false)
+                }
               }
             }
           }, restartDelay)
@@ -179,15 +297,12 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
 
       recognitionRef.current = recognition
       isInitializedRef.current = true
-      console.log('Speech recognition initialized')
+      console.log('Speech recognition initialized successfully')
+      }
     }
-
-    // Auto-start recording if autoStart is enabled
-    if (autoStart && recognitionRef.current && !isInitializedRef.current) {
-      setTimeout(() => {
-        startRecording()
-      }, 500)
-    }
+    
+    // Initialize with async wrapper
+    initializeSpeechRecognition()
 
     return () => {
       console.log('VoiceRecorder cleanup')
@@ -205,7 +320,7 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
       }
       isInitializedRef.current = false
     }
-  }, [toast, onRecordingStateChange]) // Removed autoStart dependency to prevent re-initialization
+  }, [toast, onRecordingStateChange])
 
   const startRecording = () => {
     // Prevent multiple simultaneous recordings
@@ -215,9 +330,17 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
     }
     
     console.log('Starting recording...', 'isMobile:', isMobile.current)
+    
+    // Reset all state and refs for new recording
     setTranscript('')
     setInterimTranscript('')
     transcriptRef.current = ''
+    lastProcessedResultRef.current = ''
+    resultIndexRef.current = 0
+    isProcessingRef.current = false
+    
+    console.log('State reset complete, starting fresh recording')
+    
     setIsRecording(true)
     onRecordingStateChange(true)
     
@@ -272,44 +395,30 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
     console.log('Auto mode enabled:', autoModeRef.current)
     
     if (finalText) {
-      // Detect if this is a question (interviewer speaking)
+      // Always generate an answer for any speech input
+      console.log('Processing speech:', finalText)
+      onTranscriptionComplete(finalText)
+      
+      // Detect if this is a question for better user feedback
       const isQuestion = detectQuestion(finalText)
       console.log('Is question detected:', isQuestion)
       
       if (isQuestion) {
-        // This is likely the interviewer asking a question
-        onTranscriptionComplete(finalText)
         toast({
           title: 'Question Detected',
           description: 'Generating answer...',
         })
-        
-        // Pause listening in auto mode to let user read and speak
-        if (autoModeRef.current) {
-          setIsPaused(true)
-          console.log('Auto mode: Paused. User can now read and explain the answer.')
-          toast({
-            title: 'Paused',
-            description: 'Read the answer and explain it. Click "Next Question" when ready.',
-            duration: 5000,
-          })
-        }
       } else {
-        // This is likely your answer, skip AI generation
-        console.log('User response detected, skipping AI generation:', finalText)
         toast({
-          title: 'Your Response Captured',
-          description: 'Waiting for next question...',
+          title: 'Speech Captured',
+          description: 'Generating response...',
         })
-        
-        // Auto-restart immediately for next question
-        if (autoModeRef.current && !isPausedRef.current) {
-          console.log('Auto mode: restarting for next question in 1.5 seconds')
-          setTimeout(() => {
-            console.log('Auto mode: restarting recording now')
-            startRecording()
-          }, 1500)
-        }
+      }
+      
+      // Pause auto mode to let user review the answer
+      if (autoModeRef.current) {
+        setIsPaused(true)
+        console.log('Auto mode: Paused for answer review')
       }
     } else {
       console.log('No speech detected')
@@ -317,15 +426,6 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
         title: 'No Speech Detected',
         description: 'Please try again and speak clearly.',
       })
-      
-      // Auto-restart even if no speech detected
-      if (autoModeRef.current) {
-        console.log('Auto mode: restarting after no speech in 1 second')
-        setTimeout(() => {
-          console.log('Auto mode: restarting recording now')
-          startRecording()
-        }, 1000)
-      }
     }
   }
 
@@ -542,6 +642,24 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
                   )}
                 </p>
               </div>
+            )}
+
+            {/* Next Question Button for Auto Mode */}
+            {isPaused && autoMode && (
+              <Button
+                onClick={() => {
+                  setIsPaused(false)
+                  setTranscript('')
+                  setInterimTranscript('')
+                  transcriptRef.current = ''
+                  lastProcessedResultRef.current = ''
+                  resultIndexRef.current = 0
+                  setTimeout(() => startRecording(), 500)
+                }}
+                className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+              >
+                Next Question
+              </Button>
             )}
           </div>
         </CardContent>
