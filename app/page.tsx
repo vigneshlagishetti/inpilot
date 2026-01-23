@@ -71,23 +71,33 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4, duration: 0.6 }}
-                className="text-lg sm:text-xl lg:text-2xl text-gray-700 dark:text-gray-200 mb-8 sm:mb-12 max-w-3xl mx-auto px-4"
+                className="text-lg sm:text-xl lg:text-2xl text-gray-700 dark:text-gray-200 mb-4 sm:mb-6 max-w-3xl mx-auto px-4"
               >
                 Practice interviews with <span className="font-semibold text-blue-600 dark:text-blue-400">AI-powered voice assistance</span>.
                 Get instant feedback, improve your skills, and land your dream job.
               </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.4 }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 mb-8 sm:mb-10"
+              >
+                <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                <span className="text-sm font-medium text-green-700 dark:text-green-300">Free to start • No credit card required</span>
+              </motion.div>
 
               {/* CTA Buttons */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6, duration: 0.6 }}
-                className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
+                className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-4"
               >
                 <Button
                   onClick={() => router.push('/sign-up')}
                   size="lg"
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-base sm:text-lg px-8 py-6 rounded-xl group"
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-base sm:text-lg px-8 py-6 sm:py-7 rounded-xl group min-w-[200px]"
                 >
                   Get Started Free
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -96,11 +106,20 @@ export default function Home() {
                   onClick={() => router.push('/sign-in')}
                   variant="outline"
                   size="lg"
-                  className="border-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-base sm:text-lg px-8 py-6 rounded-xl"
+                  className="border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50 text-base sm:text-lg px-8 py-6 sm:py-7 rounded-xl min-w-[200px]"
                 >
                   Sign In
                 </Button>
               </motion.div>
+
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8, duration: 0.4 }}
+                className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-16"
+              >
+                Already have an account? <button onClick={() => router.push('/sign-in')} className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Sign in here</button>
+              </motion.p>
 
               {/* Features Grid */}
               <motion.div
@@ -217,18 +236,28 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             className="max-w-4xl mx-auto glass p-8 sm:p-12 rounded-3xl border border-white/20 dark:border-white/10 bg-gradient-to-br from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 backdrop-blur-xl text-center"
           >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 mb-6">
+              <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Join thousands practicing today</span>
+            </div>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
               Ready to Ace Your Interview?
             </h2>
             <p className="text-lg sm:text-xl text-gray-700 dark:text-gray-200 mb-8 sm:mb-10 max-w-2xl mx-auto">
-              Join now and start practicing with your AI interview coach. It's free to get started!
+              Sign up now and start practicing with your AI interview coach. It's completely free to get started!
             </p>
             <Button
               onClick={() => router.push('/sign-up')}
               size="lg"
               className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 text-lg px-10 py-7 rounded-xl group"
             >
-              Start Practicing Now
+              Create Your Free Account
+              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-6">
+              Have an account? <button onClick={() => router.push('/sign-in')} className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Sign in</button>
+            </p>
+          </motion.div>
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </motion.div>

@@ -212,7 +212,7 @@ export default function DashboardPage() {
               )}
             </Button>
             <div className="scale-90 sm:scale-100">
-              <UserButton afterSignOutUrl="/sign-in" />
+              <UserButton afterSignOutUrl="/" />
             </div>
           </div>
         </div>
