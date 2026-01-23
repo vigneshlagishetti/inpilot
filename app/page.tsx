@@ -1,12 +1,248 @@
-import { redirect } from 'next/navigation'
-import { currentUser } from '@clerk/nextjs/server'
+'use client'
 
-export default async function Home() {
-  const user = await currentUser()
-  
-  if (user) {
-    redirect('/dashboard')
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
+import { Sparkles, Mic, Brain, Zap, ArrowRight, CheckCircle2, Rocket } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Button } from '@/components/ui/button'
+
+export default function Home() {
+  const { isLoaded, isSignedIn } = useUser()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.push('/dashboard')
+    }
+  }, [isLoaded, isSignedIn, router])
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-blue-950/20 dark:to-purple-950/20">
+        <div className="p-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg">
+          <Sparkles className="w-10 h-10 text-white animate-pulse" />
+        </div>
+      </div>
+    )
   }
-  
-  redirect('/sign-in')
+
+  return (
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-blue-950/20 dark:to-purple-950/20">
+      {/* Animated background blobs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 -left-4 w-96 h-96 bg-purple-300 dark:bg-purple-900/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-30 dark:opacity-20 animate-blob"></div>
+        <div className="absolute top-0 -right-4 w-96 h-96 bg-yellow-300 dark:bg-yellow-900/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-30 dark:opacity-20 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-8 left-20 w-96 h-96 bg-pink-300 dark:bg-pink-900/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-30 dark:opacity-20 animate-blob animation-delay-4000"></div>
+        <div className="absolute bottom-0 right-20 w-96 h-96 bg-blue-300 dark:bg-blue-900/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-3xl opacity-30 dark:opacity-20 animate-blob animation-delay-6000"></div>
+      </div>
+
+      {/* Content */}
+      <div className="relative">
+        {/* Hero Section */}
+        <section className="px-4 sm:px-6 lg:px-8 pt-20 pb-16 sm:pt-32 sm:pb-24">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center">
+              {/* Logo */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="flex justify-center mb-8"
+              >
+                <div className="p-4 sm:p-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-2xl">
+                  <Sparkles className="w-12 h-12 sm:w-16 sm:h-16 text-white" />
+                </div>
+              </motion.div>
+
+              {/* Headline */}
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="text-4xl sm:text-6xl lg:text-7xl font-bold mb-6 sm:mb-8"
+              >
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                  AI Interview Assistant
+                </span>
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.6 }}
+                className="text-lg sm:text-xl lg:text-2xl text-gray-700 dark:text-gray-200 mb-8 sm:mb-12 max-w-3xl mx-auto px-4"
+              >
+                Practice interviews with <span className="font-semibold text-blue-600 dark:text-blue-400">AI-powered voice assistance</span>.
+                Get instant feedback, improve your skills, and land your dream job.
+              </motion.p>
+
+              {/* CTA Buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.6 }}
+                className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
+              >
+                <Button
+                  onClick={() => router.push('/sign-up')}
+                  size="lg"
+                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-base sm:text-lg px-8 py-6 rounded-xl group"
+                >
+                  Get Started Free
+                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+                <Button
+                  onClick={() => router.push('/sign-in')}
+                  variant="outline"
+                  size="lg"
+                  className="border-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-base sm:text-lg px-8 py-6 rounded-xl"
+                >
+                  Sign In
+                </Button>
+              </motion.div>
+
+              {/* Features Grid */}
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8, duration: 0.6 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-6xl mx-auto"
+              >
+                {[
+                  {
+                    icon: Mic,
+                    title: 'Voice Recognition',
+                    description: 'Speak naturally, AI transcribes instantly',
+                    color: 'from-blue-500 to-blue-600'
+                  },
+                  {
+                    icon: Brain,
+                    title: 'Smart AI Responses',
+                    description: 'Personalized answers based on your resume',
+                    color: 'from-purple-500 to-purple-600'
+                  },
+                  {
+                    icon: Zap,
+                    title: 'Real-time Feedback',
+                    description: 'Practice and improve on the spot',
+                    color: 'from-yellow-500 to-orange-500'
+                  },
+                  {
+                    icon: Rocket,
+                    title: 'Interview Ready',
+                    description: 'Boost confidence for your next interview',
+                    color: 'from-pink-500 to-red-500'
+                  }
+                ].map((feature, index) => (
+                  <motion.div
+                    key={feature.title}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 1 + index * 0.1, duration: 0.4 }}
+                    className="glass p-6 rounded-2xl border border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl hover:shadow-xl transition-all duration-300 hover:scale-105"
+                  >
+                    <div className={`p-3 bg-gradient-to-br ${feature.color} rounded-xl inline-block mb-4`}>
+                      <feature.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-50">{feature.title}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{feature.description}</p>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works Section */}
+        <section className="px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+          <div className="max-w-5xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="text-center mb-12 sm:mb-16"
+            >
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                How It Works
+              </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-300">Get started in 3 simple steps</p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+              {[
+                {
+                  step: '01',
+                  title: 'Upload Your Resume',
+                  description: 'Paste or upload your resume and set your job role preferences'
+                },
+                {
+                  step: '02',
+                  title: 'Start Speaking',
+                  description: 'Ask questions using voice - AI listens and transcribes automatically'
+                },
+                {
+                  step: '03',
+                  title: 'Get AI Answers',
+                  description: 'Receive personalized, detailed answers based on your experience'
+                }
+              ].map((item, index) => (
+                <motion.div
+                  key={item.step}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.2, duration: 0.5 }}
+                  className="relative"
+                >
+                  <div className="glass p-8 rounded-2xl border border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl">
+                    <div className="text-6xl font-bold text-blue-500/20 dark:text-blue-400/20 mb-4">{item.step}</div>
+                    <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-gray-50">{item.title}</h3>
+                    <p className="text-gray-600 dark:text-gray-300">{item.description}</p>
+                    <CheckCircle2 className="absolute top-8 right-8 w-6 h-6 text-green-500 dark:text-green-400" />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="max-w-4xl mx-auto glass p-8 sm:p-12 rounded-3xl border border-white/20 dark:border-white/10 bg-gradient-to-br from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 backdrop-blur-xl text-center"
+          >
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+              Ready to Ace Your Interview?
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-700 dark:text-gray-200 mb-8 sm:mb-10 max-w-2xl mx-auto">
+              Join now and start practicing with your AI interview coach. It's free to get started!
+            </p>
+            <Button
+              onClick={() => router.push('/sign-up')}
+              size="lg"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 text-lg px-10 py-7 rounded-xl group"
+            >
+              Start Practicing Now
+              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </motion.div>
+        </section>
+
+        {/* Footer */}
+        <footer className="px-4 sm:px-6 lg:px-8 py-8 border-t border-white/20 dark:border-white/10">
+          <div className="max-w-7xl mx-auto text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              © 2026 AI Interview Assistant. Built with 💜 for interview success.
+            </p>
+          </div>
+        </footer>
+      </div>
+    </div>
+  )
 }
