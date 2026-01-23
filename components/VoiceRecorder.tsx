@@ -158,19 +158,24 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
           let currentInterim = ''
           let newFinalText = ''
           
-          // Process all results to avoid fragmentation
-          for (let i = 0; i < event.results.length; i++) {
+          // Process only new results starting from the last processed index
+          for (let i = resultIndexRef.current; i < event.results.length; i++) {
             const transcriptPiece = event.results[i][0].transcript.trim()
             
             if (event.results[i].isFinal) {
-              // Check for duplicates only if we have previous content
-              if (transcriptPiece && !lastProcessedResultRef.current.includes(transcriptPiece)) {
-                newFinalText += transcriptPiece + ' '
-                lastProcessedResultRef.current += transcriptPiece + ' '
-                console.log('Added final text piece:', transcriptPiece)
+              // Only add if not empty and not a duplicate
+              if (transcriptPiece && transcriptPiece !== lastProcessedResultRef.current.trim()) {
+                newFinalText = transcriptPiece
+                lastProcessedResultRef.current = transcriptPiece
+                resultIndexRef.current = i + 1
+                console.log('Added final text:', transcriptPiece)
+                break // Only process one final result at a time
               }
             } else {
-              currentInterim += transcriptPiece + ' '
+              // Show interim only for the latest result
+              if (i === event.results.length - 1) {
+                currentInterim = transcriptPiece
+              }
             }
           }
 
@@ -338,6 +343,12 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
     lastProcessedResultRef.current = ''
     resultIndexRef.current = 0
     isProcessingRef.current = false
+    
+    // Clear any existing silence timer
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
     
     console.log('State reset complete, starting fresh recording')
     
@@ -599,15 +610,25 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
               }`}></div>
               
               <Button
+                type="button"
                 size="lg"
                 variant={isRecording ? 'destructive' : 'default'}
-                onClick={isRecording ? stopRecording : startRecording}
-                className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full transition-all duration-300 ${
+                onClick={(e) => {
+                  // Prevent double execution but allow mobile touches
+                  if (e.detail > 1) return // Prevent double-click
+                  if (isRecording) {
+                    stopRecording()
+                  } else {
+                    startRecording()
+                  }
+                }}
+                className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full transition-all duration-300 select-none ${
                   isRecording 
                     ? 'recording-pulse scale-110 shadow-2xl' 
                     : 'hover:scale-110 hover:shadow-xl bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
                 } ${!isRecording ? 'group-hover:animate-pulse' : ''}`}
                 disabled={(autoMode && isRecording) || isPaused}
+                style={{ touchAction: 'manipulation' }}
               >
                 {isRecording ? (
                   <MicOff className="w-6 h-6 sm:w-8 sm:h-8 animate-pulse" />
