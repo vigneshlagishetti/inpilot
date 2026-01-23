@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { Mic, MicOff, Volume2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,7 +12,12 @@ interface VoiceRecorderProps {
   autoStart?: boolean // Auto-start recording on mount
 }
 
-export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange, autoStart = false }: VoiceRecorderProps) {
+export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange, autoStart = false }: VoiceRecorderProps, ref) {
+    // Expose startRecording to parent via ref
+    useImperativeHandle(ref, () => ({
+      startRecording,
+      stopRecording
+    }))
   const [isRecording, setIsRecording] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [interimTranscript, setInterimTranscript] = useState('')
@@ -689,4 +694,4 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
       </Card>
     </div>
   )
-}
+})

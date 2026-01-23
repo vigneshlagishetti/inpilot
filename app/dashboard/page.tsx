@@ -61,6 +61,9 @@ export default function DashboardPage() {
   const resumeContentRef = useRef<string>('')
   const jobRoleRef = useRef<string>('')
   const customInstructionsRef = useRef<string>('')
+  const answerSectionRef = useRef<HTMLDivElement>(null)
+  const recordingSectionRef = useRef<HTMLDivElement>(null)
+  const voiceRecorderRef = useRef<any>(null)
   
   // Load saved data from localStorage on mount
   useEffect(() => {
@@ -295,6 +298,18 @@ export default function DashboardPage() {
         title: 'Answer Generated',
         description: 'Your answer is ready!',
       })
+
+      // Auto-scroll to answer on mobile in continuous mode
+      setTimeout(() => {
+        const isMobile = window.innerWidth < 768 // sm breakpoint
+        if (isMobile && answerSectionRef.current) {
+          answerSectionRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+            inline: 'nearest'
+          })
+        }
+      }, 300) // Small delay to ensure content is rendered
     } catch (error) {
       console.error('Error generating answer:', error)
       toast({
@@ -307,9 +322,28 @@ export default function DashboardPage() {
     }
   }
 
-  const handleNewQuestion = () => {
+  const handleNextQuestion = () => {
+    // Scroll back to recording section
+    if (recordingSectionRef.current) {
+      recordingSectionRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+        inline: 'nearest'
+      })
+    }
+    
+    // Clear current question and answer
     setCurrentQuestion('')
     setCurrentAnswer(null)
+    
+    // Start recording after a short delay to allow scroll to complete
+    setTimeout(() => {
+      // This will trigger the voice recorder to start if it has a start method exposed
+      const isMobile = window.innerWidth < 768
+      if (isMobile && voiceRecorderRef.current && typeof voiceRecorderRef.current.startRecording === 'function') {
+        voiceRecorderRef.current.startRecording();
+      }
+    }, 800)
   }
 
   return (
@@ -408,7 +442,7 @@ export default function DashboardPage() {
           <TabsContent value="interview" className="mt-0">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
               {/* Left Panel - Voice Recorder */}
-              <div className="lg:col-span-1 space-y-4 sm:space-y-6">
+              <div className="lg:col-span-1 space-y-4 sm:space-y-6" ref={recordingSectionRef}>
                 {/* Voice Recorder */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -426,6 +460,7 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent className="p-4 sm:p-6 pt-0">
                       <VoiceRecorder
+                        ref={voiceRecorderRef}
                         onTranscriptionComplete={handleTranscription}
                         onRecordingStateChange={setIsRecording}
                       />
@@ -434,7 +469,7 @@ export default function DashboardPage() {
                         <div className="mt-4">
                           <Button
                             type="button"
-                            onClick={handleNewQuestion}
+                            onClick={handleNextQuestion}
                             variant="outline"
                             className="w-full border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-11"
                           >
@@ -493,7 +528,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Right Panel - Answer Display */}
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2" ref={answerSectionRef}>
             {isLoading ? (
               <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl flex items-center justify-center min-h-[300px] sm:min-h-[400px] relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 animate-pulse"></div>
@@ -533,6 +568,19 @@ export default function DashboardPage() {
                   <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 italic break-words">{currentQuestion}</p>
                 </div>
                 <AnswerDisplay {...currentAnswer} />
+                
+                {/* Next Question Button - Only show on mobile */}
+                <div className="mt-6 flex justify-center lg:hidden">
+                  <Button
+                    type="button"
+                    onClick={handleNextQuestion}
+                    size="lg"
+                    className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold px-8 py-3 rounded-full hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
+                  >
+                    <Mic2 className="w-5 h-5 mr-2" />
+                    Next Question
+                  </Button>
+                </div>
               </motion.div>
             ) : (
               <motion.div
@@ -1077,4 +1125,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-    
