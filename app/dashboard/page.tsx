@@ -348,11 +348,13 @@ export default function DashboardPage() {
           </motion.div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Button
+              type="button"
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
               className="rounded-full hover:bg-white/50 dark:hover:bg-white/10 h-8 w-8 sm:h-10 sm:w-10"
               aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {theme === 'dark' ? (
                 <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
@@ -431,6 +433,7 @@ export default function DashboardPage() {
                       {currentQuestion && !isRecording && (
                         <div className="mt-4">
                           <Button
+                            type="button"
                             onClick={handleNewQuestion}
                             variant="outline"
                             className="w-full border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-11"
@@ -464,6 +467,7 @@ export default function DashboardPage() {
                         <div className="space-y-2">
                           {history.slice(0, 5).map((item, index) => (
                             <button
+                              type="button"
                               key={index}
                               onClick={() => {
                                 setCurrentQuestion(item.question)
@@ -624,6 +628,7 @@ export default function DashboardPage() {
                     Remove all saved configuration including resume, job role, and custom instructions.
                   </p>
                   <Button
+                    type="button"
                     onClick={handleClearAllSettings}
                     variant="outline"
                     className="w-full border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950 hover:text-red-900 dark:hover:text-red-100"
@@ -666,10 +671,12 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((rating) => (
                       <button
+                        type="button"
                         key={rating}
                         onClick={() => setReviewRating(rating)}
                         className="group p-1"
                         aria-label={`Rate ${rating} out of 5 stars`}
+                        title={`Rate ${rating} out of 5 stars`}
                       >
                         <Star 
                           className={`w-6 h-6 sm:w-7 sm:h-7 transition-all duration-200 ${
@@ -702,6 +709,7 @@ export default function DashboardPage() {
               </div>
 
               <Button 
+                type="button"
                 onClick={async () => {
                   if (reviewText.trim() && user) {
                     const newReview: UserReview = {
@@ -777,6 +785,7 @@ export default function DashboardPage() {
                       {(user?.primaryEmailAddress?.emailAddress === 'lvigneshbunty789@gmail.com' || 
                         user?.primaryEmailAddress?.emailAddress === review.userEmail) && (
                         <button
+                          type="button"
                           onClick={() => handleDeleteReview(review.id)}
                           className="p-1.5 sm:p-1 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-all duration-200 group flex-shrink-0"
                           title={user?.primaryEmailAddress?.emailAddress === 'lvigneshbunty789@gmail.com' ? "Delete review (Admin)" : "Delete your review"}
@@ -920,6 +929,7 @@ export default function DashboardPage() {
               </div>
 
               <Button 
+                type="button"
                 onClick={async () => {
                   if (contactForm.name && contactForm.email && contactForm.message) {
                     try {
@@ -990,7 +1000,7 @@ export default function DashboardPage() {
                 }
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {user?.publicMetadata?.jobTitle || 'Impilot User'}
+                {(user?.publicMetadata?.jobTitle as string) || 'Impilot User'}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-500 max-w-md mx-auto mb-6">
                 Welcome to Impilot! Your AI-powered voice assistant for smart conversations and productivity.
@@ -1046,14 +1056,6 @@ export default function DashboardPage() {
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
-                      </svg>
-                    </motion.a>
-                  </div>
-                      whileHover={{ scale: 1.1, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M4.083 9h1.946c.089-1.546.383-2.97.837-4.118A6.004 6.004 0 004.083 9zM10 2a8 8 0 100 16 8 8 0 000-16zm0 2c-.076 0-.232.032-.465.262-.238.234-.497.623-.737 1.182-.389.907-.673 2.142-.766 3.556h3.936c-.093-1.414-.377-2.649-.766-3.556-.24-.56-.5-.948-.737-1.182C10.232 4.032 10.076 4 10 4zm3.971 5c-.089-1.546-.383-2.97-.837-4.118A6.004 6.004 0 0115.917 9h-1.946zm-2.003 2H8.032c.093 1.414.377 2.649.766 3.556.24.56.5.948.737 1.182.233.23.389.262.465.262.076 0 .232-.032.465-.262.238-.234.498-.623.737-1.182.389-.907.673-2.142.766-3.556zm1.166 4.118c.454-1.147.748-2.572.837-4.118h1.946a6.004 6.004 0 01-2.783 4.118zm-6.268 0C6.412 13.97 6.118 12.546 6.03 11H4.083a6.004 6.004 0 002.783 4.118z" clipRule="evenodd" />
                       </svg>
                     </motion.a>
                   </div>

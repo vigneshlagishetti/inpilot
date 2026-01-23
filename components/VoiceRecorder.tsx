@@ -544,18 +544,20 @@ export function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange,
   return (
     <div className="space-y-4">
       {/* Auto Mode Toggle */}
-      <div className="flex items-center justify-center space-x-2 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-white/20 dark:border-white/10 hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-300 group">
+      <div className="flex items-center justify-center space-x-3 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-white/20 dark:border-white/10 hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-300 group">
         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Continuous Mode</span>
         <button
+          type="button"
           onClick={toggleAutoMode}
           aria-label={autoMode ? 'Turn off continuous mode' : 'Turn on continuous mode'}
-          className={`relative inline-flex h-3.5 w-7 sm:h-5 sm:w-9 items-center rounded-full transition-all duration-300 hover:scale-105 ${
-            autoMode ? 'bg-gradient-to-r from-green-500 to-green-600 shadow-lg' : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+          className={`relative inline-flex h-4 w-7 sm:h-6 sm:w-11 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:scale-95 ${
+            autoMode ? 'bg-gradient-to-r from-green-500 to-green-600 shadow-lg hover:from-green-600 hover:to-green-700' : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
           }`}
+          style={{ minHeight: '24px', minWidth: '28px' }}
         >
           <span
-            className={`inline-block h-2.5 w-2.5 sm:h-3 sm:w-3 transform rounded-full bg-white transition-all duration-300 shadow-sm ${
-              autoMode ? 'translate-x-3.5 sm:translate-x-5 scale-110' : 'translate-x-0.5 sm:translate-x-1'
+            className={`inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white transition-all duration-200 shadow-md hover:shadow-lg ${
+              autoMode ? 'translate-x-3 sm:translate-x-5' : 'translate-x-0.5 sm:translate-x-1'
             }`}
           />
         </button>
