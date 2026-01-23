@@ -258,9 +258,6 @@ export default function Home() {
               Have an account? <button onClick={() => router.push('/sign-in')} className="text-blue-600 dark:text-blue-400 hover:underline font-medium">Sign in</button>
             </p>
           </motion.div>
-              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </motion.div>
         </section>
 
         {/* Footer */}
