@@ -84,7 +84,16 @@ export default function DashboardPage() {
       const response = await fetch('/api/reviews')
       if (response.ok) {
         const data = await response.json()
-        setUserReviews(data.reviews || [])
+        // Convert API format back to component format
+        const formattedReviews = data.reviews?.map((review: any) => ({
+          id: review.id,
+          userName: review.user_name,
+          userEmail: review.user_email,
+          rating: review.rating,
+          text: review.text,
+          timestamp: new Date(review.created_at)
+        })) || []
+        setUserReviews(formattedReviews)
       }
     } catch (error) {
       console.error('Error loading reviews:', error)
