@@ -68,20 +68,40 @@ export default function DashboardPage() {
     const savedFileName = localStorage.getItem('interviewAssistant_fileName')
     const savedJobRole = localStorage.getItem('interviewAssistant_jobRole')
     const savedInstructions = localStorage.getItem('interviewAssistant_instructions')
-    const savedReviews = localStorage.getItem('impilot_userReviews')
     
     if (savedResume) setResumeContent(savedResume)
     if (savedFileName) setResumeFileName(savedFileName)
     if (savedJobRole) setJobRole(savedJobRole)
     if (savedInstructions) setCustomInstructions(savedInstructions)
-    if (savedReviews) {
-      try {
-        setUserReviews(JSON.parse(savedReviews))
-      } catch (error) {
-        console.error('Error parsing saved reviews:', error)
-      }
-    }
+    
+    // Load reviews from API
+    loadReviews()
   }, [])
+  
+  // Load all reviews from API/database
+  const loadReviews = async () => {
+    try {
+      // This would call your backend API
+      // For now, we'll use localStorage as a temporary shared storage simulation
+      const allReviews = localStorage.getItem('impilot_shared_reviews')
+      if (allReviews) {
+        setUserReviews(JSON.parse(allReviews))
+      }
+    } catch (error) {
+      console.error('Error loading reviews:', error)
+    }
+  }
+  
+  // Save review to shared storage (API/database)
+  const saveReviewToShared = async (reviews: UserReview[]) => {
+    try {
+      // This would call your backend API
+      // For now, we'll use localStorage as a temporary shared storage simulation
+      localStorage.setItem('impilot_shared_reviews', JSON.stringify(reviews))
+    } catch (error) {
+      console.error('Error saving reviews:', error)
+    }
+  }
   
   // Update refs whenever state changes
   useEffect(() => {
@@ -123,10 +143,12 @@ export default function DashboardPage() {
     localStorage.setItem('interviewAssistant_instructions', instructions)
   }
 
-  const handleDeleteReview = (reviewId: string) => {
+  const handleDeleteReview = async (reviewId: string) => {
     const updatedReviews = userReviews.filter(review => review.id !== reviewId);
     setUserReviews(updatedReviews);
-    localStorage.setItem('impilot_userReviews', JSON.stringify(updatedReviews));
+    
+    // Save to shared storage
+    await saveReviewToShared(updatedReviews);
     
     toast({
       title: "Review Deleted",
@@ -625,10 +647,10 @@ export default function DashboardPage() {
               </div>
 
               <Button 
-                onClick={() => {
+                onClick={async () => {
                   if (reviewText.trim() && user) {
                     const newReview: UserReview = {
-                      id: Date.now().toString(),
+                      id: `${Date.now()}_${user.id}`,
                       userName: user.fullName || user.firstName || 'Anonymous',
                       userEmail: user.primaryEmailAddress?.emailAddress || '',
                       rating: reviewRating,
@@ -638,7 +660,9 @@ export default function DashboardPage() {
                     
                     const updatedReviews = [newReview, ...userReviews];
                     setUserReviews(updatedReviews);
-                    localStorage.setItem('impilot_userReviews', JSON.stringify(updatedReviews));
+                    
+                    // Save to shared storage
+                    await saveReviewToShared(updatedReviews);
                     
                     toast({
                       title: "Review Submitted!",
@@ -669,7 +693,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {userReviews.length > 0 ? (
-                userReviews.map((review, index) => (
+                userReviews.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((review, index) => (
                 <motion.div 
                   key={index} 
                   className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200"
