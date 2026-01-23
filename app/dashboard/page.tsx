@@ -355,6 +355,13 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* Footer */}
+        <footer className="text-center py-6 px-4">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-500">
+            Developed by <span className="font-semibold text-blue-600 dark:text-blue-400">Lagishetti Vignesh</span>
+          </p>
+        </footer>
       </main>
     </div>
   )

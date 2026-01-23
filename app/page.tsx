@@ -262,9 +262,12 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="px-4 sm:px-6 lg:px-8 py-8 border-t border-white/20 dark:border-white/10">
-          <div className="max-w-7xl mx-auto text-center">
+          <div className="max-w-7xl mx-auto text-center space-y-2">
             <p className="text-sm text-gray-600 dark:text-gray-400">
               © 2026 AI Interview Assistant. Built with 💜 for interview success.
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-500">
+              Developed by <span className="font-semibold text-blue-600 dark:text-blue-400">Lagishetti Vignesh</span>
             </p>
           </div>
         </footer>
