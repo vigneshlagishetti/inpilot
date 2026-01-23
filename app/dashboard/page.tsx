@@ -7,7 +7,8 @@ import { AnswerDisplay } from '@/components/AnswerDisplay'
 import { ResumeUploader } from '@/components/ResumeUploader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Loader2, MessageSquare, History, Moon, Sun, Sparkles } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { motion } from 'framer-motion'
 import { useTheme } from '@/components/ThemeProvider'
@@ -220,100 +221,107 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="relative container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-          {/* Left Panel - Voice Recorder & Resume Upload */}
-          <div className="lg:col-span-1 space-y-4 sm:space-y-6">
-            {/* Resume Uploader */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+        <Tabs defaultValue="interview" className="w-full">
+          {/* Tab Navigation */}
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-6 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-white/20 dark:border-white/10 p-1 h-auto">
+            <TabsTrigger 
+              value="interview" 
+              className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-2.5"
             >
-              <ResumeUploader 
-                onContentExtracted={handleResumeContent}
-                onJobRoleChange={handleJobRoleChange}
-                onCustomInstructionsChange={handleCustomInstructionsChange}
-                initialJobRole={jobRole}
-                initialInstructions={customInstructions}
-              />
-            </motion.div>
-
-            {/* Voice Recorder */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
+              <Mic2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Interview Practice</span>
+              <span className="sm:hidden">Interview</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="settings" 
+              className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white py-2.5"
             >
-              <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
-                <CardHeader className="p-4 sm:p-6">
-                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
-                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-                    Ask Your Question
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-0">
-                  <VoiceRecorder
-                    onTranscriptionComplete={handleTranscription}
-                    onRecordingStateChange={setIsRecording}
-                  />
-                  
-                  {currentQuestion && !isRecording && (
-                    <div className="mt-4">
-                      <Button
-                        onClick={handleNewQuestion}
-                        variant="outline"
-                        className="w-full border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-11"
-                      >
-                        Ask Another Question
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
+              <Settings className="w-4 h-4" />
+              Settings
+            </TabsTrigger>
+          </TabsList>
 
-            {/* History */}
-            {history.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
-                  <CardHeader className="p-4 sm:p-6">
-                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
-                      <History className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
-                      Recent Questions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 sm:p-6 pt-0">
-                    <div className="space-y-2">
-                      {history.slice(0, 5).map((item, index) => (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            setCurrentQuestion(item.question)
-                            setCurrentAnswer(item.answer)
-                          }}
-                          className="w-full text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 min-h-[44px]"
-                        >
-                          <p className="text-sm font-medium line-clamp-2 text-gray-900 dark:text-gray-100">
-                            {item.question}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {item.timestamp.toLocaleTimeString()}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-          </div>
+          {/* Interview Tab */}
+          <TabsContent value="interview" className="mt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+              {/* Left Panel - Voice Recorder */}
+              <div className="lg:col-span-1 space-y-4 sm:space-y-6">
+                {/* Voice Recorder */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
+                    <CardHeader className="p-4 sm:p-6">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
+                        <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
+                        Ask Your Question
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 sm:p-6 pt-0">
+                      <VoiceRecorder
+                        onTranscriptionComplete={handleTranscription}
+                        onRecordingStateChange={setIsRecording}
+                      />
+                      
+                      {currentQuestion && !isRecording && (
+                        <div className="mt-4">
+                          <Button
+                            onClick={handleNewQuestion}
+                            variant="outline"
+                            className="w-full border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950 h-11"
+                          >
+                            Ask Another Question
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
 
-          {/* Right Panel - Answer Display */}
-          <div className="lg:col-span-2">
+                {/* History */}
+                {history.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                  >
+                    <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
+                      <CardHeader className="p-4 sm:p-6">
+                        <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-gray-900 dark:text-gray-100">
+                          <History className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
+                          Recent Questions
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 sm:p-6 pt-0">
+                        <div className="space-y-2">
+                          {history.slice(0, 5).map((item, index) => (
+                            <button
+                              key={index}
+                              onClick={() => {
+                                setCurrentQuestion(item.question)
+                                setCurrentAnswer(item.answer)
+                              }}
+                              className="w-full text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 min-h-[44px]"
+                            >
+                              <p className="text-sm font-medium line-clamp-2 text-gray-900 dark:text-gray-100">
+                                {item.question}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {item.timestamp.toLocaleTimeString()}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Right Panel - Answer Display */}
+              <div className="lg:col-span-2">
             {isLoading ? (
               <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl flex items-center justify-center min-h-[300px] sm:min-h-[400px]">
                 <CardContent className="text-center p-4 sm:p-6">
@@ -355,9 +363,37 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+      </TabsContent>
+
+      {/* Settings Tab */}
+      <TabsContent value="settings" className="mt-0">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-4xl mx-auto"
+        >
+          <ResumeUploader 
+            onContentExtracted={handleResumeContent}
+            onJobRoleChange={handleJobRoleChange}
+            onCustomInstructionsChange={handleCustomInstructionsChange}
+            initialJobRole={jobRole}
+            initialInstructions={customInstructions}
+          />
+          
+          {resumeFileName && (
+            <div className="mt-6 p-4 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+              <p className="text-sm text-green-800 dark:text-green-300">
+                ✓ Configuration saved! Switch to the <strong>Interview Practice</strong> tab to start.
+              </p>
+            </div>
+          )}
+        </motion.div>
+      </TabsContent>
+    </Tabs>
 
         {/* Footer */}
-        <footer className="text-center py-6 px-4">
+        <footer className="text-center py-6 px-4 mt-8">
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-500">
             Developed by <span className="font-semibold text-blue-600 dark:text-blue-400">Lagishetti Vignesh</span>
           </p>
