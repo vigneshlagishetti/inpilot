@@ -1055,9 +1055,8 @@ export default function DashboardPage() {
                 Share your feedback to help us improve!
               </p>
               
-              {/* Developer Social Links - Only show for admin user */}
-              {user?.emailAddresses[0]?.emailAddress === 'lvigneshbunty789@gmail.com' && (
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              {/* Developer Social Links - Visible to all users */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
                   <p className="text-xs text-gray-400 dark:text-gray-600 mb-4 text-center">
                     Connect with the Developer
                   </p>
