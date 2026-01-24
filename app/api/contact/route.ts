@@ -90,13 +90,26 @@ export async function POST(request: NextRequest) {
         to: email,
         subject: 'Thank you for contacting Impilot!',
         html: `
-          <h2>Thank you for reaching out!</h2>
-          <p>Hi${name ? ` ${name}` : ''},</p>
-          <p>We have received your message and will get back to you as soon as possible.</p>
-          <hr />
-          <p><strong>Your message:</strong></p>
-          <blockquote style="background:#f8f9fa;padding:10px;border-radius:6px;">${message}</blockquote>
-          <p>Best regards,<br/>Impilot Team</p>
+          <div style="max-width:520px;margin:0 auto;font-family:Arial,sans-serif;background:#f9f9f9;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px #0001;">
+            <div style="background:#4f46e5;padding:24px 0;text-align:center;">
+              <img src="https://cdn.pixabay.com/photo/2017/01/31/13/14/artificial-intelligence-2025789_1280.png" alt="AI Logo" width="48" height="48" style="display:block;margin:0 auto 8px;border-radius:8px;object-fit:cover;"/>
+              <h1 style="color:#fff;margin:0;font-size:2rem;letter-spacing:1px;">Impilot</h1>
+            </div>
+            <div style="padding:32px 24px 24px 24px;background:#fff;">
+              <h2 style="color:#4f46e5;margin-top:0;">Thank you for reaching out!</h2>
+              <p style="font-size:1.1rem;">Hi${name ? ` <b>${name}</b>` : ''},</p>
+              <p style="margin-bottom:24px;">We have received your message and will get back to you as soon as possible.</p>
+              <div style="background:#f3f4f6;padding:16px 18px;border-radius:8px;margin-bottom:24px;">
+                <p style="margin:0 0 8px 0;font-weight:bold;">Your message:</p>
+                <div style="color:#333;white-space:pre-line;">${message}</div>
+              </div>
+              <p style="font-size:0.95rem;color:#666;">If you have any urgent questions, feel free to reply to this email.</p>
+              <p style="margin-top:32px;font-size:0.95rem;color:#888;">Best regards,<br/>The Impilot Team</p>
+            </div>
+            <div style="background:#f3f4f6;padding:12px;text-align:center;font-size:0.85rem;color:#888;">
+              &copy; ${new Date().getFullYear()} Impilot. All rights reserved.
+            </div>
+          </div>
         `
       };
       try {
