@@ -25,6 +25,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   const [autoMode, setAutoMode] = useState(autoStart)
   const [isPaused, setIsPaused] = useState(false) // Paused after generating answer
   const recognitionRef = useRef<any>(null)
+  const lastButtonPressRef = useRef<number>(0)
+  const recognitionRestartingRef = useRef(false)
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const isRecordingRef = useRef(false)
   const transcriptRef = useRef('')
@@ -156,20 +158,21 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           console.log('Skipping result processing - not recording or already processing')
           return
         }
-        
         isProcessingRef.current = true
-        
         try {
           let currentInterim = ''
           let newFinalText = ''
-          
           // Process only new results starting from the last processed index
           for (let i = resultIndexRef.current; i < event.results.length; i++) {
             const transcriptPiece = event.results[i][0].transcript.trim()
-            
             if (event.results[i].isFinal) {
-              // Only add if not empty and not a duplicate
-              if (transcriptPiece && transcriptPiece !== lastProcessedResultRef.current.trim()) {
+              // Only add if not empty and not a duplicate (stricter: also check against full transcript)
+              const alreadyInTranscript = transcriptRef.current.includes(transcriptPiece)
+              if (
+                transcriptPiece &&
+                transcriptPiece !== lastProcessedResultRef.current.trim() &&
+                !alreadyInTranscript
+              ) {
                 newFinalText = transcriptPiece
                 lastProcessedResultRef.current = transcriptPiece
                 resultIndexRef.current = i + 1
@@ -183,34 +186,28 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
               }
             }
           }
-
           // Update interim transcript for real-time display
           if (currentInterim.trim() && currentInterim.trim() !== interimTranscript.trim()) {
             setInterimTranscript(currentInterim.trim())
             console.log('Updated interim:', currentInterim.trim())
           }
-
           if (newFinalText.trim()) {
             const cleanFinal = newFinalText.trim()
             console.log('Processing new final text:', cleanFinal)
-            
             setTranscript((prev) => {
               const newText = prev + (prev ? ' ' : '') + cleanFinal
               transcriptRef.current = newText
               console.log('Updated full transcript:', newText)
               return newText
             })
-            
             // Only clear interim if we have final text
             if (cleanFinal) {
               setInterimTranscript('')
             }
-            
             // Reset silence timer when speech is detected
             if (silenceTimerRef.current) {
               clearTimeout(silenceTimerRef.current)
             }
-
             // Auto-stop after silence - shorter delay in continuous mode
             const silenceDelay = autoModeRef.current 
               ? 1000 // 1 second in continuous mode 
@@ -281,12 +278,16 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
       recognition.onend = () => {
         setIsListening(false)
         console.log('Recognition ended, isRecording:', isRecordingRef.current, 'isMobile:', isMobile.current)
-        
+        // Prevent overlapping restarts
+        if (recognitionRestartingRef.current) {
+          console.log('Recognition restart already in progress, skipping')
+          return
+        }
         // On mobile, prevent rapid restarts that can cause duplicates
         if (isRecordingRef.current && recognitionRef.current && !isProcessingRef.current) {
+          recognitionRestartingRef.current = true
           const restartDelay = isMobile.current ? 1000 : 100 // Much longer delay on mobile
           console.log(`Scheduling restart in ${restartDelay}ms`)
-          
           setTimeout(() => {
             if (isRecordingRef.current && recognitionRef.current) {
               try {
@@ -301,6 +302,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                 }
               }
             }
+            recognitionRestartingRef.current = false
           }, restartDelay)
         }
       }
@@ -618,9 +620,11 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                 type="button"
                 size="lg"
                 variant={isRecording ? 'destructive' : 'default'}
-                onClick={(e) => {
-                  // Prevent double execution but allow mobile touches
-                  if (e.detail > 1) return // Prevent double-click
+                onPointerDown={(e) => {
+                  // Debounce: ignore if pressed again within 500ms
+                  const now = Date.now()
+                  if (now - lastButtonPressRef.current < 500) return
+                  lastButtonPressRef.current = now
                   if (isRecording) {
                     stopRecording()
                   } else {
