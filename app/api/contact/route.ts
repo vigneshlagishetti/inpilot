@@ -21,15 +21,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create transporter (using Gmail SMTP, port 587, secure: false)
-    // Note: You'll need to set up environment variables for email credentials
+    // Create transporter (using SendGrid)
+    // Note: You'll need to set up SENDGRID_API_KEY in your environment variables
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // use TLS
+      service: 'SendGrid',
       auth: {
-        user: process.env.SMTP_USER || 'your-email@gmail.com',
-        pass: process.env.SMTP_PASS || 'your-app-password'
+        user: 'apikey', // this is literally the string 'apikey'
+        pass: process.env.SENDGRID_API_KEY
       }
     })
 
@@ -64,7 +62,7 @@ export async function POST(request: NextRequest) {
 
     // Email options
     const mailOptions = {
-      from: email,
+      from: 'lvigneshbunty789@gmail.com',
       to: 'lvigneshbunty789@gmail.com',
       subject: `Impilot Contact: Message from ${name}`,
       html: htmlContent,
