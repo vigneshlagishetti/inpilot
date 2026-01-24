@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const htmlContent = `
       <div style="max-width:520px;margin:0 auto;font-family:Arial,sans-serif;background:#f9f9f9;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px #0001;">
         <div style="background:#4f46e5;padding:24px 0;text-align:center;">
-          <img src="https://i.ibb.co/M53mJF6m/inpilot-logo.png" alt="Inpilot Logo" width="120" height="63" style="display:block;margin:0 auto 8px;border-radius:8px;object-fit:cover;"/>
+          <img src="https://inpilot.vigneshlagishetti.me/inpilot-logo.png" alt="Inpilot Logo" width="120" height="63" style="display:block;margin:0 auto 8px;border-radius:8px;object-fit:cover;"/>
           <h1 style="color:#fff;margin:0;font-size:2rem;letter-spacing:1px;">Impilot</h1>
         </div>
         <div style="padding:32px 24px 24px 24px;background:#fff;">
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
               <p>${files.length} file(s) attached: ${files.map(f => f.name).join(', ')}</p>
             </div>
           ` : ''}
-          <p style="font-size:0.95rem;color:#666;margin-top:32px;">This message was sent from the Impilot contact form.<br/>Sent at: ${new Date().toLocaleString()}</p>
+          <p style="font-size:0.95rem;color:#666;margin-top:32px;">This message was sent from the Inpilot contact form.<br/>Sent at: ${new Date().toLocaleString()}</p>
         </div>
         <div style="background:#f3f4f6;padding:12px;text-align:center;font-size:0.85rem;color:#888;">
           &copy; ${new Date().getFullYear()} Impilot. All rights reserved.
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const mailOptions = {
       from: 'lvigneshbunty789@gmail.com',
       to: 'lvigneshbunty789@gmail.com',
-      subject: `Impilot Contact: Message from ${name}`,
+      subject: `Inpilot Contact: Message from ${name}`,
       html: htmlContent,
       replyTo: email,
       attachments: files.map(file => ({
@@ -91,12 +91,12 @@ export async function POST(request: NextRequest) {
       const confirmMailOptions = {
         from: 'lvigneshbunty789@gmail.com',
         to: email,
-        subject: 'Thank you for contacting Impilot!',
+        subject: 'Thank you for contacting Inpilot!',
         html: `
           <div style="max-width:520px;margin:0 auto;font-family:Arial,sans-serif;background:#f9f9f9;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px #0001;">
             <div style="background:#4f46e5;padding:24px 0;text-align:center;">
-              <img src="https://i.ibb.co/M53mJF6m/inpilot-logo.png" alt="Inpilot Logo" width="120" height="63" style="display:block;margin:0 auto 8px;border-radius:8px;object-fit:cover;"/>
-              <h1 style="color:#fff;margin:0;font-size:2rem;letter-spacing:1px;">Impilot</h1>
+              <img src="https://inpilot.vigneshlagishetti.me/inpilot-logo.png" alt="Inpilot Logo" width="120" height="63" style="display:block;margin:0 auto 8px;border-radius:8px;object-fit:cover;"/>
+              <h1 style="color:#fff;margin:0;font-size:2rem;letter-spacing:1px;">Inpilot</h1>
             </div>
             <div style="padding:32px 24px 24px 24px;background:#fff;">
               <h2 style="color:#4f46e5;margin-top:0;">Thank you for reaching out!</h2>
@@ -107,10 +107,10 @@ export async function POST(request: NextRequest) {
                 <div style="color:#333;white-space:pre-line;">${message}</div>
               </div>
               <p style="font-size:0.95rem;color:#666;">If you have any urgent questions, feel free to reply to this email.</p>
-              <p style="margin-top:32px;font-size:0.95rem;color:#888;">Best regards,<br/>The Impilot Team</p>
+              <p style="margin-top:32px;font-size:0.95rem;color:#888;">Best regards,<br/>The Inpilot Team</p>
             </div>
             <div style="background:#f3f4f6;padding:12px;text-align:center;font-size:0.85rem;color:#888;">
-              &copy; ${new Date().getFullYear()} Impilot. All rights reserved.
+              &copy; ${new Date().getFullYear()} Inpilot. All rights reserved.
             </div>
           </div>
         `
