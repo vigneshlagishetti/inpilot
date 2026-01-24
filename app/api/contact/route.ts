@@ -21,10 +21,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create transporter (using Gmail SMTP)
+    // Create transporter (using Gmail SMTP, port 587, secure: false)
     // Note: You'll need to set up environment variables for email credentials
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // use TLS
       auth: {
         user: process.env.SMTP_USER || 'your-email@gmail.com',
         pass: process.env.SMTP_PASS || 'your-app-password'
@@ -75,7 +77,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Send email
-    await transporter.sendMail(mailOptions)
+    try {
+      await transporter.sendMail(mailOptions)
+    } catch (smtpError) {
+      console.error('SMTP sendMail error:', smtpError);
+      throw smtpError;
+    }
 
     return NextResponse.json({ 
       success: true, 

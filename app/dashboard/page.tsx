@@ -958,17 +958,17 @@ export default function DashboardPage() {
                       {contactForm.files.map((file, index) => (
                         <div key={index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
                           <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
-                          <button
+                          <Button
                             onClick={() => {
                               setContactForm(prev => ({
                                 ...prev,
                                 files: prev.files.filter((_, i) => i !== index)
                               }))
                             }}
-                            className="text-red-500 hover:text-red-700 p-1"
+                            className="t  ext-red-500 hover:text-red-700 p-1"
                           >
                             <X className="w-4 h-4" />
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </div>
