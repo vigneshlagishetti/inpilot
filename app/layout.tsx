@@ -1,3 +1,4 @@
+// © 2026 Lagishetti Vignesh. All rights reserved.
 import { ClerkProvider } from '@clerk/nextjs'
 import './globals.css'
 import type { Metadata } from 'next'

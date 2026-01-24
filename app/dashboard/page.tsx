@@ -1,3 +1,4 @@
+// © 2026 Lagishetti Vignesh. All rights reserved.
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
@@ -1117,6 +1118,9 @@ export default function DashboardPage() {
         <footer className="text-center py-6 px-4 mt-8">
           <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-500">
             Developed by <span className="font-semibold text-blue-600 dark:text-blue-400">Lagishetti Vignesh</span>
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-600">
+            © 2026 Lagishetti Vignesh. All rights reserved.
           </p>
         </footer>
       </main>

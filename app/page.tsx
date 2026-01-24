@@ -1,3 +1,4 @@
+// © 2026 Lagishetti Vignesh. All rights reserved.
 'use client'
 
 import { useEffect } from 'react'
@@ -315,6 +316,9 @@ export default function Home() {
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-500">
               Developed by <span className="font-semibold text-blue-600 dark:text-blue-400">Lagishetti Vignesh</span>
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-600">
+              © 2026 Lagishetti Vignesh. All rights reserved.
             </p>
           </div>
         </footer>

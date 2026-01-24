@@ -1,3 +1,4 @@
+// © 2026 Lagishetti Vignesh. All rights reserved.
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 
