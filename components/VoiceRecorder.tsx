@@ -164,14 +164,18 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           let newFinalText = ''
           // Process only new results starting from the last processed index
           for (let i = resultIndexRef.current; i < event.results.length; i++) {
-            const transcriptPiece = event.results[i][0].transcript.trim()
+            let transcriptPiece = event.results[i][0].transcript.trim()
+            // Remove repeated leading words (e.g., "okay okay tell" -> "okay tell")
+            transcriptPiece = transcriptPiece.replace(/^(\w+)( \1)+/i, '$1')
             if (event.results[i].isFinal) {
-              // Only add if not empty and not a duplicate (stricter: also check against full transcript)
-              const alreadyInTranscript = transcriptRef.current.includes(transcriptPiece)
+              // Only add if not empty and not a duplicate at the end of transcript
+              const prevTranscript = transcriptRef.current.trim()
+              const lastWords = prevTranscript.split(' ').slice(-5).join(' ')
+              const isDuplicateEnd = lastWords.endsWith(transcriptPiece)
               if (
                 transcriptPiece &&
                 transcriptPiece !== lastProcessedResultRef.current.trim() &&
-                !alreadyInTranscript
+                !isDuplicateEnd
               ) {
                 newFinalText = transcriptPiece
                 lastProcessedResultRef.current = transcriptPiece
