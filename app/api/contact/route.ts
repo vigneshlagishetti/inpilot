@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
           <p style="font-size:0.95rem;color:#666;margin-top:32px;">This message was sent from the Inpilot contact form.<br/>Sent at: ${new Date().toLocaleString()}</p>
         </div>
         <div style="background:#f3f4f6;padding:12px;text-align:center;font-size:0.85rem;color:#888;">
-          &copy; ${new Date().getFullYear()} Inpilot. All rights reserved.
+          &copy; ${new Date().getFullYear()} Inpilot. All rights reserved.<br/>
+          &copy; 2026 Lagishetti Vignesh. All rights reserved.
         </div>
       </div>
     `
@@ -111,7 +112,8 @@ export async function POST(request: NextRequest) {
               <p style="margin-top:32px;font-size:0.95rem;color:#888;">Best regards,<br/>The Inpilot Team</p>
             </div>
             <div style="background:#f3f4f6;padding:12px;text-align:center;font-size:0.85rem;color:#888;">
-              &copy; ${new Date().getFullYear()} Inpilot. All rights reserved.
+              &copy; ${new Date().getFullYear()} Inpilot. All rights reserved.<br/>
+              &copy; 2026 Lagishetti Vignesh. All rights reserved.
             </div>
           </div>
         `
