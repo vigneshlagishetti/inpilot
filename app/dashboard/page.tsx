@@ -1107,7 +1107,6 @@ export default function DashboardPage() {
                     </motion.a>
                   </div>
                 </div>
-              )}
             </CardContent>
           </Card>
         </motion.div>
