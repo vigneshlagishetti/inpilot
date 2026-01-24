@@ -74,12 +74,37 @@ export async function POST(request: NextRequest) {
       }))
     }
 
-    // Send email
+
+    // Send email to admin (yourself)
     try {
       await transporter.sendMail(mailOptions)
     } catch (smtpError) {
       console.error('SMTP sendMail error:', smtpError);
       throw smtpError;
+    }
+
+    // Send confirmation email to user
+    if (email) {
+      const confirmMailOptions = {
+        from: 'lvigneshbunty789@gmail.com',
+        to: email,
+        subject: 'Thank you for contacting Impilot!',
+        html: `
+          <h2>Thank you for reaching out!</h2>
+          <p>Hi${name ? ` ${name}` : ''},</p>
+          <p>We have received your message and will get back to you as soon as possible.</p>
+          <hr />
+          <p><strong>Your message:</strong></p>
+          <blockquote style="background:#f8f9fa;padding:10px;border-radius:6px;">${message}</blockquote>
+          <p>Best regards,<br/>Impilot Team</p>
+        `
+      };
+      try {
+        await transporter.sendMail(confirmMailOptions);
+      } catch (userMailError) {
+        console.error('Error sending confirmation email to user:', userMailError);
+        // Do not throw, so admin still gets notified
+      }
     }
 
     return NextResponse.json({ 
