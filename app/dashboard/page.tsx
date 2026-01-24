@@ -721,7 +721,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         key={rating}
-                        onClick={() => setReviewRating(rating)}
+                        onClick={() => setReviewRating(rating === reviewRating ? 0 : rating)}
                         className="group p-1"
                         aria-label={`Rate ${rating} out of 5 stars`}
                         title={`Rate ${rating} out of 5 stars`}
