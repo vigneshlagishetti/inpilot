@@ -111,14 +111,8 @@ export default function DashboardPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newReview),
-      })
-      
-      if (response.ok) {
-        // Reload reviews to get latest data
-        await loadReviews()
-      }
+        }
+      });
     } catch (error) {
       console.error('Error saving review:', error)
     }
