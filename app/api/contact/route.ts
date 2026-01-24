@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       <div style="max-width:520px;margin:0 auto;font-family:Arial,sans-serif;background:#f9f9f9;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px #0001;">
         <div style="background:#4f46e5;padding:24px 0;text-align:center;">
           <img src="https://inpilot.vigneshlagishetti.me/inpilot-logo.png" alt="Inpilot Logo" width="120" height="63" style="display:block;margin:0 auto 8px;border-radius:8px;object-fit:cover;"/>
-          <h1 style="color:#fff;margin:0;font-size:2rem;letter-spacing:1px;">Impilot</h1>
+          <h1 style="color:#fff;margin:0;font-size:2rem;letter-spacing:1px;">Inpilot</h1>
         </div>
         <div style="padding:32px 24px 24px 24px;background:#fff;">
           <h2 style="color:#4f46e5;margin-top:0;">New Contact Form Submission</h2>
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
           <p style="font-size:0.95rem;color:#666;margin-top:32px;">This message was sent from the Inpilot contact form.<br/>Sent at: ${new Date().toLocaleString()}</p>
         </div>
         <div style="background:#f3f4f6;padding:12px;text-align:center;font-size:0.85rem;color:#888;">
-          &copy; ${new Date().getFullYear()} Impilot. All rights reserved.
+          &copy; ${new Date().getFullYear()} Inpilot. All rights reserved.
         </div>
       </div>
     `

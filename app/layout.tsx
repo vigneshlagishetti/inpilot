@@ -8,7 +8,7 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Impilot - AI Interview Practice',
+  title: 'Inpilot - AI Interview Practice',
   description: 'Practice interviews with AI-powered voice assistance',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=5',
 }

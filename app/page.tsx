@@ -69,7 +69,7 @@ export default function Home() {
                 className="text-4xl sm:text-6xl lg:text-7xl font-bold mb-6 sm:mb-8"
               >
                 <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-                  Impilot
+                  Inpilot
                 </span>
               </motion.h1>
 
@@ -308,10 +308,10 @@ export default function Home() {
               <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
                 <Sparkles className="w-4 h-4 text-white" />
               </div>
-              <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">Impilot</span>
+              <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">Inpilot</span>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              © 2026 Impilot. Built with 💜 for interview success.
+              © 2026 Inpilot. Built with 💜 for interview success.
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-500">
               Developed by <span className="font-semibold text-blue-600 dark:text-blue-400">Lagishetti Vignesh</span>

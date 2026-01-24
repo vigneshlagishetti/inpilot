@@ -373,7 +373,7 @@ export default function DashboardPage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 dark:from-blue-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent truncate tracking-tight">
-                Impilot
+                Inpilot
               </h1>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hidden sm:block font-medium">
                 AI-Powered Interview Practice
@@ -750,7 +750,7 @@ export default function DashboardPage() {
                 <textarea
                   value={reviewText}
                   onChange={(e) => setReviewText(e.target.value)}
-                  placeholder="Tell us about your experience with Impilot..."
+                  placeholder="Tell us about your experience with Inpilot..."
                   className="w-full h-24 sm:h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/60 dark:bg-gray-800/60 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
                   rows={3}
                 />
@@ -774,7 +774,7 @@ export default function DashboardPage() {
                     
                     toast({
                       title: "Review Submitted!",
-                      description: "Thank you for your feedback. It helps us improve Impilot.",
+                      description: "Thank you for your feedback. It helps us improve Inpilot.",
                     });
                     setReviewText('');
                     setReviewRating(0);
@@ -1048,10 +1048,10 @@ export default function DashboardPage() {
                 }
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {(user?.publicMetadata?.jobTitle as string) || 'Impilot User'}
+                {(user?.publicMetadata?.jobTitle as string) || 'Inpilot User'}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-500 max-w-md mx-auto mb-6">
-                Welcome to Impilot! Your AI-powered voice assistant for smart conversations and productivity.
+                Welcome to Inpilot! Your AI-powered voice assistant for smart conversations and productivity.
                 Share your feedback to help us improve!
               </p>
               
