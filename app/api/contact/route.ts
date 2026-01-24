@@ -31,31 +31,34 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Email content
+    // Email content (to admin)
     const htmlContent = `
-      <h2>New Contact Form Submission from Impilot</h2>
-      <div style="font-family: Arial, sans-serif; max-width: 600px;">
-        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #333; margin-top: 0;">Contact Details</h3>
-          <p><strong>Name:</strong> ${name}</p>
-          <p><strong>Email:</strong> ${email}</p>
+      <div style="max-width:520px;margin:0 auto;font-family:Arial,sans-serif;background:#f9f9f9;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px #0001;">
+        <div style="background:#4f46e5;padding:24px 0;text-align:center;">
+          <img src="https://i.ibb.co/M53mJF6m/inpilot-logo.png" alt="Inpilot Logo" width="120" height="63" style="display:block;margin:0 auto 8px;border-radius:8px;object-fit:cover;"/>
+          <h1 style="color:#fff;margin:0;font-size:2rem;letter-spacing:1px;">Impilot</h1>
         </div>
-        
-        <div style="background: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-          <h3 style="color: #333; margin-top: 0;">Message</h3>
-          <p style="white-space: pre-wrap; line-height: 1.6;">${message}</p>
-        </div>
-        
-        ${files.length > 0 ? `
-          <div style="background: #e8f4fd; padding: 15px; border-radius: 8px; margin-top: 20px;">
-            <h3 style="color: #333; margin-top: 0;">Attachments</h3>
-            <p>${files.length} file(s) attached: ${files.map(f => f.name).join(', ')}</p>
+        <div style="padding:32px 24px 24px 24px;background:#fff;">
+          <h2 style="color:#4f46e5;margin-top:0;">New Contact Form Submission</h2>
+          <div style="background:#f3f4f6;padding:16px 18px;border-radius:8px;margin-bottom:24px;">
+            <p style="margin:0 0 8px 0;font-weight:bold;">Contact Details:</p>
+            <div style="color:#333;">Name: <b>${name}</b></div>
+            <div style="color:#333;">Email: <b>${email}</b></div>
           </div>
-        ` : ''}
-        
-        <div style="margin-top: 30px; padding: 15px; background: #f0f0f0; border-radius: 8px; font-size: 12px; color: #666;">
-          <p>This message was sent from the Impilot contact form.</p>
-          <p>Sent at: ${new Date().toLocaleString()}</p>
+          <div style="background:#f8fafc;padding:16px 18px;border-radius:8px;margin-bottom:24px;">
+            <p style="margin:0 0 8px 0;font-weight:bold;">Message:</p>
+            <div style="color:#333;white-space:pre-line;">${message}</div>
+          </div>
+          ${files.length > 0 ? `
+            <div style="background: #e8f4fd; padding: 15px; border-radius: 8px; margin-top: 20px;">
+              <h3 style="color: #333; margin-top: 0;">Attachments</h3>
+              <p>${files.length} file(s) attached: ${files.map(f => f.name).join(', ')}</p>
+            </div>
+          ` : ''}
+          <p style="font-size:0.95rem;color:#666;margin-top:32px;">This message was sent from the Impilot contact form.<br/>Sent at: ${new Date().toLocaleString()}</p>
+        </div>
+        <div style="background:#f3f4f6;padding:12px;text-align:center;font-size:0.85rem;color:#888;">
+          &copy; ${new Date().getFullYear()} Impilot. All rights reserved.
         </div>
       </div>
     `
@@ -83,8 +86,8 @@ export async function POST(request: NextRequest) {
       throw smtpError;
     }
 
-    // Send confirmation email to user
-    if (email) {
+    // Send confirmation email to user (only if email is valid)
+    if (email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       const confirmMailOptions = {
         from: 'lvigneshbunty789@gmail.com',
         to: email,
@@ -92,7 +95,7 @@ export async function POST(request: NextRequest) {
         html: `
           <div style="max-width:520px;margin:0 auto;font-family:Arial,sans-serif;background:#f9f9f9;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px #0001;">
             <div style="background:#4f46e5;padding:24px 0;text-align:center;">
-              <img src="https://cdn.pixabay.com/photo/2017/01/31/13/14/artificial-intelligence-2025789_1280.png" alt="AI Logo" width="48" height="48" style="display:block;margin:0 auto 8px;border-radius:8px;object-fit:cover;"/>
+              <img src="https://i.ibb.co/M53mJF6m/inpilot-logo.png" alt="Inpilot Logo" width="120" height="63" style="display:block;margin:0 auto 8px;border-radius:8px;object-fit:cover;"/>
               <h1 style="color:#fff;margin:0;font-size:2rem;letter-spacing:1px;">Impilot</h1>
             </div>
             <div style="padding:32px 24px 24px 24px;background:#fff;">
