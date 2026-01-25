@@ -352,6 +352,11 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
       // Always generate an answer for any speech input
       console.log('Processing speech:', finalText)
       onTranscriptionComplete(finalText)
+      toast({
+        title: 'Answer Callback Triggered',
+        description: `Transcript sent: ${finalText}`,
+        variant: 'default',
+      })
       // Detect if this is a question for better user feedback
       const isQuestion = detectQuestion(finalText)
       console.log('Is question detected:', isQuestion)
