@@ -64,16 +64,7 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# OpenAI
-OPENAI_API_KEY=your_openai_api_key
-```
-
-### 3. Set Up Clerk
-
 1. Go to [clerk.com](https://clerk.com) and create an account
-2. Create a new application
 3. Copy the API keys to your `.env.local` file
 4. Configure the sign-in/sign-up pages
 
@@ -93,21 +84,14 @@ OPENAI_API_KEY=your_openai_api_key
 1. Go to [platform.openai.com](https://platform.openai.com)
 2. Create an API key
 3. Add it to your `.env.local` file
-
 ### 6. Run the Application
 
 ```bash
-npm run dev
-```
-
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Browser Compatibility
 
 The Web Speech API is best supported in:
-- ✅ Chrome/Edge (Recommended)
-- ✅ Safari
-- ⚠️ Firefox (Limited support)
 
 **Note**: For production use, consider implementing a cloud-based speech recognition service like:
 - Deepgram
