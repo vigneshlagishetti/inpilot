@@ -199,11 +199,15 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
             const cleanFinal = newFinalText.trim();
             console.log('Processing new final text:', cleanFinal);
             setTranscript((prev) => {
-              // Prevent duplicity: only append if not already at the end
-              const prevTrim = prev.trim();
+              // Stricter deduplication: only append if not present in last 20 words
+              const prevWords = prev.trim().split(' ');
+              const cleanWords = cleanFinal.split(' ');
+              const lastN = 20;
+              const lastWords = prevWords.slice(-lastN).join(' ');
               if (
-                prevTrim.endsWith(cleanFinal) ||
-                prevTrim.split(' ').slice(-cleanFinal.split(' ').length).join(' ') === cleanFinal
+                lastWords.includes(cleanFinal) ||
+                prev.trim().endsWith(cleanFinal) ||
+                prevWords.slice(-cleanWords.length).join(' ') === cleanFinal
               ) {
                 console.log('Duplicate final text detected, skipping append');
                 return prev;
@@ -221,10 +225,10 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
             if (silenceTimerRef.current) {
               clearTimeout(silenceTimerRef.current);
             }
-            // Auto-stop after silence - shorter delay in continuous mode
+            // Auto-stop after silence - 1.5s in continuous mode, 5s in manual mode on mobile
             const silenceDelay = autoModeRef.current 
-              ? 1000 // 1 second in continuous mode 
-              : (isMobile.current ? 4000 : 3000); // Longer delay in manual mode
+              ? 1500 // 1.5 seconds in continuous mode 
+              : (isMobile.current ? 5000 : 3000); // 5s for mobile manual, 3s for desktop manual
             silenceTimerRef.current = setTimeout(() => {
               if (isRecordingRef.current) {
                 console.log('Silence timeout triggered after', silenceDelay, 'ms');
