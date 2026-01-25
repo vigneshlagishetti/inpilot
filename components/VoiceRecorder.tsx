@@ -237,12 +237,14 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           if (silenceTimerRef.current) {
             clearTimeout(silenceTimerRef.current);
           }
+          // Reduce silence timeout for mobile for faster response
+          const silenceTimeout = isMobile.current ? 600 : 1200;
           silenceTimerRef.current = setTimeout(() => {
             if (isRecordingRef.current) {
-              console.log('Silence timeout triggered after 1.5s');
+              console.log(`Silence timeout triggered after ${silenceTimeout}ms`);
               stopRecording();
             }
-          }, 1500);
+          }, silenceTimeout);
         } finally {
           isProcessingRef.current = false
         }
