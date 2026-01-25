@@ -24,6 +24,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   const [isListening, setIsListening] = useState(false)
   const [autoMode, setAutoMode] = useState(autoStart)
   const [isPaused, setIsPaused] = useState(false) // Paused after generating answer
+  const [buttonLocked, setButtonLocked] = useState(false);
   const recognitionRef = useRef<any>(null)
   const lastButtonPressRef = useRef<number>(0)
   const recognitionRestartingRef = useRef(false)
@@ -37,10 +38,12 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   const lastProcessedResultRef = useRef('')
   const resultIndexRef = useRef(0)
   const isProcessingRef = useRef(false)
+  const phraseSetRef = useRef<Set<string>>(new Set());
   const { toast } = useToast()
 
   useEffect(() => {
-    isRecordingRef.current = isRecording
+    isRecordingRef.current = isRecording;
+    if (!isRecording) setButtonLocked(false); // Unlock button when not recording
   }, [isRecording])
 
   useEffect(() => {
@@ -197,26 +200,20 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           }
           if (newFinalText.trim()) {
             const cleanFinal = newFinalText.trim();
-            console.log('Processing new final text:', cleanFinal);
-            setTranscript((prev) => {
-              // Stricter deduplication: only append if not present in last 20 words
-              const prevWords = prev.trim().split(' ');
-              const cleanWords = cleanFinal.split(' ');
-              const lastN = 20;
-              const lastWords = prevWords.slice(-lastN).join(' ');
-              if (
-                lastWords.includes(cleanFinal) ||
-                prev.trim().endsWith(cleanFinal) ||
-                prevWords.slice(-cleanWords.length).join(' ') === cleanFinal
-              ) {
-                console.log('Duplicate final text detected, skipping append');
-                return prev;
-              }
-              const newText = prev + (prev ? ' ' : '') + cleanFinal;
-              transcriptRef.current = newText;
-              console.log('Updated full transcript:', newText);
-              return newText;
-            });
+            // Remove repeated leading words (e.g., 'so so', 'okay okay')
+            const cleanPhrase = cleanFinal.replace(/^(\w+)( \1)+/i, '$1');
+            // Deduplicate at phrase level
+            if (phraseSetRef.current.has(cleanPhrase)) {
+              console.log('Phrase already added, skipping:', cleanPhrase);
+            } else {
+              phraseSetRef.current.add(cleanPhrase);
+              setTranscript((prev) => {
+                const newText = prev + (prev ? ' ' : '') + cleanPhrase;
+                transcriptRef.current = newText;
+                console.log('Updated full transcript:', newText);
+                return newText;
+              });
+            }
             // Only clear interim if we have final text
             if (cleanFinal) {
               setInterimTranscript('');
@@ -352,14 +349,11 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   }, [toast, onRecordingStateChange])
 
   const startRecording = () => {
-    // Prevent multiple simultaneous recordings
-    if (isRecordingRef.current) {
-      console.log('Recording already in progress')
-      return
+    if (isRecordingRef.current || buttonLocked) {
+      console.log('Recording already in progress or button locked');
+      return;
     }
-    
-    console.log('Starting recording...', 'isMobile:', isMobile.current)
-    
+    setButtonLocked(true);
     // Reset all state and refs for new recording
     setTranscript('')
     setInterimTranscript('')
@@ -367,6 +361,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
     lastProcessedResultRef.current = ''
     resultIndexRef.current = 0
     isProcessingRef.current = false
+    phraseSetRef.current = new Set();
     
     // Clear any existing silence timer
     if (silenceTimerRef.current) {
@@ -638,11 +633,13 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                 size="lg"
                 variant={isRecording ? 'destructive' : 'default'}
                 onPointerDown={(e) => {
+                  if (buttonLocked) return;
                   // Longer debounce for mobile, shorter for desktop
                   const now = Date.now();
                   const debounceMs = isMobile.current ? 1000 : 500;
                   if (now - lastButtonPressRef.current < debounceMs) return;
                   lastButtonPressRef.current = now;
+                  setButtonLocked(true);
                   // Immediately disable button until state changes
                   if (!isRecording) {
                     e.currentTarget.disabled = true;
@@ -653,12 +650,13 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                     startRecording();
                   }
                 }}
+                onClick={(e) => { e.preventDefault(); }}
                 className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full transition-all duration-300 select-none ${
                   isRecording 
                     ? 'recording-pulse scale-110 shadow-2xl' 
                     : 'hover:scale-110 hover:shadow-xl bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
                 } ${!isRecording ? 'group-hover:animate-pulse' : ''}`}
-                disabled={(autoMode && isRecording) || isPaused}
+                disabled={buttonLocked || (autoMode && isRecording) || isPaused}
                 style={{ touchAction: 'manipulation' }}
               >
                 {isRecording ? (
