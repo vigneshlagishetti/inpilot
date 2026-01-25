@@ -1,6 +1,20 @@
-# AI Interview Assistant
 
-An intelligent interview practice application with voice recognition, real-time transcription, and AI-powered answer generation.
+# InPilot: AI Interview Assistant
+
+An advanced web application for practicing interview questions using voice input and receiving comprehensive, AI-generated answers. Built with Next.js, TypeScript, Supabase, Clerk, and OpenAI GPT-4.
+
+## What I Have Done
+
+- Developed a full-stack AI Interview Assistant web app from scratch
+- Implemented real-time voice recording and transcription using the Web Speech API
+- Integrated OpenAI GPT-4 for structured, multi-part answer generation (direct answer, explanation, examples, code, complexity)
+- Built secure authentication and user management with Clerk (email/password & social login)
+- Designed a modern, responsive UI with Tailwind CSS, Shadcn UI, and Framer Motion
+- Set up Supabase for database and session storage
+- Added Google Search Console verification and sitemap for SEO and indexing
+- Deployed and configured DNS records for custom domain
+
+---
 
 ## Features
 
@@ -214,6 +228,18 @@ Edit the system prompt in [lib/ai-service.ts](lib/ai-service.ts)
 2. Check if schema is properly created
 3. Review Row Level Security policies
 
+
+## Domain Verification & Google Search Console
+
+- **Domain Ownership Verified:**  
+   Successfully verified domain ownership for `inpilot.vigneshlagishetti.me` using a DNS TXT record via Namecheap.
+- **Google Search Console:**  
+   Added the site to Google Search Console for indexing and performance tracking.
+- **Sitemap Submission:**  
+   Submitted `sitemap.xml` to Google Search Console to help Google discover and index site pages.
+- **Requested Indexing:**  
+   Used the URL Inspection tool to request indexing for the homepage and ensure faster appearance in Google search results.
+
 ## Future Enhancements
 
 - [ ] Save sessions to database
@@ -225,9 +251,16 @@ Edit the system prompt in [lib/ai-service.ts](lib/ai-service.ts)
 - [ ] Practice mode with timed questions
 - [ ] Performance analytics
 
-## License
 
-MIT
+## License & Copyright
+
+Copyright © 2026 Lagishetti Vignesh. All rights reserved.
+
+This project and its source code are the intellectual property of Lagishetti Vignesh. Unauthorized copying, distribution, modification, or use of this code, in whole or in part, is strictly prohibited without express written permission from the copyright holder.
+
+For licensing inquiries, please contact: lvigneshbunty789@gmail.com
+
+MIT License applies to open source contributions only.
 
 ## Contributing
 
