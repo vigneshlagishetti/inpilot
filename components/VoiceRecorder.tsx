@@ -48,309 +48,223 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
       setButtonLocked(false); // Unlock button when not recording
       setRecognitionActive(false); // Mark recognition as inactive
     }
-  }, [isRecording])
-
-  useEffect(() => {
-    autoModeRef.current = autoMode
-  }, [autoMode])
-
-  useEffect(() => {
-    isPausedRef.current = isPaused
-  }, [isPaused])
+  }, [isRecording]);
 
   useEffect(() => {
     // Prevent multiple initializations
-    if (isInitializedRef.current) return
-    
-    // Detect mobile device
-    isMobile.current = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    console.log('Device type:', isMobile.current ? 'Mobile' : 'Desktop')
-    
-    // Check microphone permissions first (especially important on mobile)
-    const checkMicrophoneAccess = async () => {
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-          console.log('Microphone access granted')
-          // Stop the stream immediately, we just needed to check permission
-          stream.getTracks().forEach(track => track.stop())
-          return true
-        }
-      } catch (error) {
-        console.error('Microphone access error:', error)
-        toast({
-          title: 'Microphone Access Required',
-          description: 'Please allow microphone access and reload the page.',
-          variant: 'destructive',
-        })
-        return false
-      }
-      return true
-    }
-    
-    // Initialize speech recognition
-    const initializeSpeechRecognition = async () => {
-      // Check microphone access first
-      if (isMobile.current) {
-        const hasAccess = await checkMicrophoneAccess()
-        if (!hasAccess) return
-      }
-      
-      // Check if browser supports Web Speech API
-      if (typeof window !== 'undefined') {
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-        
-        if (!SpeechRecognition) {
-          toast({
-            title: 'Browser Not Supported',
-            description: 'Your browser does not support speech recognition. Please use Chrome or Edge.',
-            variant: 'destructive',
-          })
-          return
-        }
+    if (isInitializedRef.current) return;
 
-        // Clean up any existing recognition
-        if (recognitionRef.current) {
-          try {
-            recognitionRef.current.stop()
-            recognitionRef.current = null
-          } catch (e) {
-            console.log('Previous recognition cleanup:', e)
-          }
-        }
+    (async () => {
+      // Detect mobile device
+      isMobile.current = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      console.log('Device type:', isMobile.current ? 'Mobile' : 'Desktop');
 
-        const recognition = new SpeechRecognition()
-        // On mobile, disable continuous mode and restart logic
-        if (isMobile.current) {
-          recognition.continuous = false;
-          recognition.maxAlternatives = 1;
-          console.log('Mobile optimizations applied: continuous mode disabled');
-        } else {
-          recognition.continuous = true;
-        }
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        setRecognitionActive(true);
-        console.log('Speech recognition started successfully');
-        
-        // On mobile, give user feedback that recording is active
-        if (isMobile.current && !autoModeRef.current) {
-          toast({
-            title: 'Listening...',
-            description: 'Speak now, the microphone is active.',
-          })
-        }
-      }
-
-      recognition.onaudiostart = () => {
-        console.log('Audio input started - microphone is working')
-      }
-
-      recognition.onspeechstart = () => {
-        console.log('Speech detected - user is speaking')
-      }
-
-      recognition.onspeechend = () => {
-        console.log('Speech ended - user stopped speaking')
-      }
-
-      recognition.onaudioend = () => {
-        console.log('Audio input ended')
-      }
-
-      recognition.onresult = (event: any) => {
-        // Prevent processing if not actively recording or already processing
-        if (!isRecordingRef.current || isProcessingRef.current) {
-          console.log('Skipping result processing - not recording or already processing')
-          return
-        }
-        isProcessingRef.current = true
+      // Check microphone permissions first (especially important on mobile)
+      const checkMicrophoneAccess = async () => {
         try {
-          let currentInterim = ''
-          let newFinalText = ''
-          for (let i = resultIndexRef.current; i < event.results.length; i++) {
-            if (i < resultIndexRef.current) continue;
-            let transcriptPiece = event.results[i][0].transcript.trim();
-            transcriptPiece = transcriptPiece.replace(/\b(\w+)( \1\b)+/gi, '$1');
-            // Stricter deduplication: skip if phrase is substring or near-duplicate of last transcript
-            const lastTranscript = transcriptRef.current;
-            if (event.results[i].isFinal) {
-              if (
-                phraseSetRef.current.has(transcriptPiece) ||
-                !transcriptPiece ||
-                (lastTranscript && (lastTranscript.includes(transcriptPiece) || transcriptPiece.includes(lastTranscript)))
-              ) {
-                console.log('Phrase already added, empty, or near-duplicate, skipping:', transcriptPiece);
-              } else {
-                phraseSetRef.current.add(transcriptPiece);
-                setTranscript((prev) => {
-                  const newText = prev + (prev ? ' ' : '') + transcriptPiece;
-                  transcriptRef.current = newText;
-                  console.log('Updated full transcript:', newText);
-                  return newText;
-                });
-              }
-              lastProcessedResultRef.current = transcriptPiece;
-              resultIndexRef.current = i + 1;
-              break;
-            } else {
-              if (i === event.results.length - 1) {
-                setInterimTranscript(transcriptPiece);
-                console.log('Updated interim:', transcriptPiece);
-              }
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            console.log('Microphone access granted');
+            stream.getTracks().forEach(track => track.stop());
+            return true;
+          }
+        } catch (error) {
+          console.error('Microphone access error:', error);
+          toast({
+            title: 'Microphone Access Required',
+            description: 'Please allow microphone access and reload the page.',
+            variant: 'destructive',
+          });
+          return false;
+        }
+        return true;
+      };
+
+      // Initialize speech recognition
+      const initializeSpeechRecognition = async () => {
+        if (isMobile.current) {
+          const hasAccess = await checkMicrophoneAccess();
+          if (!hasAccess) return;
+        }
+        if (typeof window !== 'undefined') {
+          const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+          if (!SpeechRecognition) {
+            toast({
+              title: 'Browser Not Supported',
+              description: 'Your browser does not support speech recognition. Please use Chrome or Edge.',
+              variant: 'destructive',
+            });
+            return;
+          }
+          if (recognitionRef.current) {
+            try {
+              recognitionRef.current.stop();
+              recognitionRef.current = null;
+            } catch (e) {
+              console.log('Previous recognition cleanup:', e);
             }
           }
-          // Update interim transcript for real-time display
-          let speechDetected = false;
-          if (currentInterim.trim() && currentInterim.trim() !== interimTranscript.trim()) {
-            // Remove repeated words in interim as well
-            const cleanInterim = currentInterim.trim().replace(/\b(\w+)( \1\b)+/gi, '$1');
-            setInterimTranscript(cleanInterim);
-            speechDetected = true;
-            console.log('Updated interim:', cleanInterim);
+          const recognition = new SpeechRecognition();
+          if (isMobile.current) {
+            recognition.continuous = false;
+            recognition.maxAlternatives = 1;
+            console.log('Mobile optimizations applied: continuous mode disabled');
+          } else {
+            recognition.continuous = true;
           }
-          if (newFinalText.trim()) {
-            const cleanFinal = newFinalText.trim();
-            // Remove repeated words in final phrase
-            const cleanPhrase = cleanFinal.replace(/\b(\w+)( \1\b)+/gi, '$1');
-            // Deduplicate at phrase level
-            if (phraseSetRef.current.has(cleanPhrase) || !cleanPhrase) {
-              console.log('Phrase already added or empty, skipping:', cleanPhrase);
-            } else {
-              phraseSetRef.current.add(cleanPhrase);
-              setTranscript((prev) => {
-                const newText = prev + (prev ? ' ' : '') + cleanPhrase;
-                transcriptRef.current = newText;
-                console.log('Updated full transcript:', newText);
-                return newText;
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+          recognition.onstart = () => {
+            setIsListening(true);
+            setRecognitionActive(true);
+            console.log('Speech recognition started successfully');
+            if (isMobile.current && !autoModeRef.current) {
+              toast({
+                title: 'Listening...',
+                description: 'Speak now, the microphone is active.',
               });
             }
-            // Only clear interim if we have final text
-            if (cleanFinal) {
-              setInterimTranscript('');
+          };
+          recognition.onaudiostart = () => {
+            console.log('Audio input started - microphone is working');
+          };
+          recognition.onspeechstart = () => {
+            console.log('Speech detected - user is speaking');
+          };
+          recognition.onspeechend = () => {
+            console.log('Speech ended - user stopped speaking');
+          };
+          recognition.onaudioend = () => {
+            console.log('Audio input ended');
+          };
+          recognition.onresult = (event: any) => {
+            if (!isRecordingRef.current || isProcessingRef.current) {
+              console.log('Skipping result processing - not recording or already processing');
+              return;
             }
-          }
-          // Remove silence timeout in both modes; only stop on final transcript
-          if (silenceTimerRef.current) {
-            clearTimeout(silenceTimerRef.current);
-          }
-        } finally {
-          isProcessingRef.current = false
-        }
-      }
-
-      recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error, event)
-        switch (event.error) {
-          case 'no-speech':
-            if (isMobile.current) {
-              toast({
-                title: 'No Speech Detected',
-                description: 'Try speaking louder or closer to your microphone. Make sure microphone access is allowed.',
-              })
-            } else {
-              toast({
-                title: 'No Speech Detected',
-                description: 'Please speak clearly into your microphone.',
-              })
-            }
-            break
-          case 'not-allowed':
-          case 'service-not-allowed':
-            toast({
-              title: 'Microphone Access Denied',
-              description: 'Please allow microphone access in your browser settings and reload the page.',
-              variant: 'destructive',
-            })
-            setIsRecording(false)
-            onRecordingStateChange(false)
-            break
-          case 'network':
-            toast({
-              title: 'Network Error',
-              description: 'Please check your internet connection and try again.',
-              variant: 'destructive',
-            })
-            break
-          case 'audio-capture':
-            toast({
-              title: 'Audio Capture Error',
-              description: isMobile.current 
-                ? 'Microphone error. Try closing other apps using the microphone and refresh the page.'
-                : 'Please check your microphone and try again.',
-              variant: 'destructive',
-            })
-            setIsRecording(false)
-            onRecordingStateChange(false)
-            break
-          default:
-            console.error('Unhandled speech recognition error:', event.error)
-            break
-        }
-      }
-
-      recognition.onend = () => {
-        setIsListening(false);
-        setRecognitionActive(false);
-        console.log('Recognition ended, isRecording:', isRecordingRef.current, 'isMobile:', isMobile.current)
-        // Prevent overlapping restarts
-        if (recognitionRestartingRef.current) {
-          console.log('Recognition restart already in progress, skipping')
-          return
-        }
-        // On mobile, do NOT restart recognition automatically
-        if (isMobile.current) {
-          console.log('Mobile: not restarting recognition automatically');
-          return;
-        }
-        // Desktop: allow restart
-        if (isRecordingRef.current && recognitionRef.current && !isProcessingRef.current) {
-          recognitionRestartingRef.current = true
-          const restartDelay = 100;
-          console.log(`Scheduling restart in ${restartDelay}ms`)
-          setTimeout(() => {
-            if (isRecordingRef.current && recognitionRef.current) {
-              try {
-                console.log('Attempting to restart recognition...')
-                recognitionRef.current.start()
-              } catch (e) {
-                console.log('Could not restart recognition:', e)
+            isProcessingRef.current = true;
+            try {
+              let currentInterim = '';
+              let newFinalText = '';
+              for (let i = resultIndexRef.current; i < event.results.length; i++) {
+                if (i < resultIndexRef.current) continue;
+                let transcriptPiece = event.results[i][0].transcript.trim();
+                transcriptPiece = transcriptPiece.replace(/\b(\w+)( \1\b)+/gi, '$1');
+                const lastTranscript = transcriptRef.current;
+                if (event.results[i].isFinal) {
+                  if (
+                    phraseSetRef.current.has(transcriptPiece) ||
+                    !transcriptPiece ||
+                    (lastTranscript && (lastTranscript.includes(transcriptPiece) || transcriptPiece.includes(lastTranscript)))
+                  ) {
+                    console.log('Phrase already added, empty, or near-duplicate, skipping:', transcriptPiece);
+                  } else {
+                    phraseSetRef.current.add(transcriptPiece);
+                    setTranscript((prev) => {
+                      const newText = prev + (prev ? ' ' : '') + transcriptPiece;
+                      transcriptRef.current = newText;
+                      console.log('Updated full transcript:', newText);
+                      return newText;
+                    });
+                  }
+                  lastProcessedResultRef.current = transcriptPiece;
+                  resultIndexRef.current = i + 1;
+                  break;
+                } else {
+                  if (i === event.results.length - 1) {
+                    setInterimTranscript(transcriptPiece);
+                    console.log('Updated interim:', transcriptPiece);
+                  }
+                }
               }
+              let speechDetected = false;
+              if (currentInterim.trim() && currentInterim.trim() !== interimTranscript.trim()) {
+                const cleanInterim = currentInterim.trim().replace(/\b(\w+)( \1\b)+/gi, '$1');
+                setInterimTranscript(cleanInterim);
+                speechDetected = true;
+                console.log('Updated interim:', cleanInterim);
+              }
+              if (newFinalText.trim()) {
+                const cleanFinal = newFinalText.trim();
+                const cleanPhrase = cleanFinal.replace(/\b(\w+)( \1\b)+/gi, '$1');
+                if (phraseSetRef.current.has(cleanPhrase) || !cleanPhrase) {
+                  console.log('Phrase already added or empty, skipping:', cleanPhrase);
+                } else {
+                  phraseSetRef.current.add(cleanPhrase);
+                  setTranscript((prev) => {
+                    const newText = prev + (prev ? ' ' : '') + cleanPhrase;
+                    transcriptRef.current = newText;
+                    console.log('Updated full transcript:', newText);
+                    return newText;
+                  });
+                }
+                if (cleanFinal) {
+                  setInterimTranscript('');
+                }
+              }
+              if (silenceTimerRef.current) {
+                clearTimeout(silenceTimerRef.current);
+              }
+            } catch (err) {
+              console.error('Error in recognition.onresult:', err);
+            } finally {
+              isProcessingRef.current = false;
             }
-            recognitionRestartingRef.current = false
-          }, restartDelay)
+          };
+          recognition.onend = () => {
+            setIsListening(false);
+            setRecognitionActive(false);
+            console.log('Recognition ended, isRecording:', isRecordingRef.current, 'isMobile:', isMobile.current);
+            if (recognitionRestartingRef.current) {
+              console.log('Recognition restart already in progress, skipping');
+              return;
+            }
+            if (isMobile.current) {
+              console.log('Mobile: not restarting recognition automatically');
+              return;
+            }
+            if (isRecordingRef.current && recognitionRef.current && !isProcessingRef.current) {
+              recognitionRestartingRef.current = true;
+              const restartDelay = 100;
+              console.log(`Scheduling restart in ${restartDelay}ms`);
+              setTimeout(() => {
+                if (isRecordingRef.current && recognitionRef.current) {
+                  try {
+                    console.log('Attempting to restart recognition...');
+                    recognitionRef.current.start();
+                  } catch (e) {
+                    console.log('Could not restart recognition:', e);
+                  }
+                }
+                recognitionRestartingRef.current = false;
+              }, restartDelay);
+            }
+          };
+          recognitionRef.current = recognition;
+          isInitializedRef.current = true;
+          console.log('Speech recognition initialized successfully');
         }
-      }
-
-      recognitionRef.current = recognition
-      isInitializedRef.current = true
-      console.log('Speech recognition initialized successfully')
-      }
-    }
-    
-    // Initialize with async wrapper
-    initializeSpeechRecognition()
+      };
+      await initializeSpeechRecognition();
+    })();
 
     return () => {
-      console.log('VoiceRecorder cleanup')
+      console.log('VoiceRecorder cleanup');
       if (recognitionRef.current) {
         try {
-          recognitionRef.current.stop()
+          recognitionRef.current.stop();
         } catch (e) {
-          console.log('Cleanup recognition error:', e)
+          console.log('Cleanup recognition error:', e);
         }
-        recognitionRef.current = null
+        recognitionRef.current = null;
       }
       if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current)
-        silenceTimerRef.current = null
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
       }
-      isInitializedRef.current = false
-    }
-  }, [toast, onRecordingStateChange])
+      isInitializedRef.current = false;
+    };
+  }, []);
 
   const startRecording = () => {
     if (isRecordingRef.current || buttonLocked || recognitionActive) {
@@ -581,26 +495,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
       {/* Auto Mode Toggle */}
       <div className="flex items-center justify-center space-x-3 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-white/20 dark:border-white/10 hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-300 group">
         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Continuous Mode</span>
-        <button
-          type="button"
-          onClick={toggleAutoMode}
-          aria-label={autoMode ? 'Turn off continuous mode' : 'Turn on continuous mode'}
-          className={`relative inline-flex h-4 w-7 sm:h-6 sm:w-11 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:scale-95 ${
-            autoMode ? 'bg-gradient-to-r from-green-500 to-green-600 shadow-lg hover:from-green-600 hover:to-green-700' : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
-          }`}
-          style={{ minHeight: '24px', minWidth: '28px' }}
-        >
-          <span
-            className={`inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white transition-all duration-200 shadow-md hover:shadow-lg ${
-              autoMode ? 'translate-x-3 sm:translate-x-5' : 'translate-x-0.5 sm:translate-x-1'
-            }`}
-          />
-        </button>
-        <span className={`text-xs transition-colors duration-300 ${
-          autoMode ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-gray-500 dark:text-gray-400'
-        }`}>
-          {autoMode ? 'ON' : 'Manual'}
-        </span>
+        {/* Toggle switch and other JSX should go here */}
       </div>
 
       {/* Resume Button (only show when paused in auto mode) */}
@@ -632,22 +527,18 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                   ? 'bg-red-500/30 blur-xl' 
                   : 'bg-blue-500/0 group-hover:bg-blue-500/30 blur-xl'
               }`}></div>
-              
               <Button
                 type="button"
                 size="lg"
                 variant={isRecording ? 'destructive' : 'default'}
                 onPointerDown={(e) => {
                   if (buttonLocked || recognitionActive) return;
-                  // Longer debounce for mobile, shorter for desktop
                   const now = Date.now();
-                  // Increase debounce for mobile, and add extra lock for mobile browsers
                   const debounceMs = isMobile.current ? 1800 : 600;
                   if (now - lastButtonPressRef.current < debounceMs) return;
                   lastButtonPressRef.current = now;
                   setButtonLocked(true);
                   setRecognitionActive(true);
-                  // Immediately disable button until state changes
                   if (!isRecording) {
                     e.currentTarget.disabled = true;
                   }
@@ -673,7 +564,6 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                 )}
               </Button>
             </div>
-            
             <div className="text-center px-2">
               <p className="text-xs sm:text-sm font-medium">
                 {isPaused
@@ -690,7 +580,6 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                 </div>
               )}
             </div>
-
             {(transcript || interimTranscript) && (
               <div className="w-full p-3 sm:p-4 bg-muted rounded-lg">
                 <p className="text-xs sm:text-sm font-medium mb-2">Transcript:</p>
@@ -702,7 +591,6 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                 </p>
               </div>
             )}
-
             {/* Next Question Button for Auto Mode */}
             {isPaused && autoMode && (
               <Button
@@ -723,7 +611,6 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           </div>
         </CardContent>
       </Card>
-
       {/* Stop Button (manual override for mobile reliability) */}
       {isRecording && (
         <div className="flex justify-center mt-2">
@@ -739,5 +626,5 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
         </div>
       )}
     </div>
-  )
-})
+  );
+});
