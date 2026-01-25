@@ -233,18 +233,10 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
               setInterimTranscript('');
             }
           }
-          // Always reset silence timer on any result
+          // Remove silence timeout in both modes; only stop on final transcript
           if (silenceTimerRef.current) {
             clearTimeout(silenceTimerRef.current);
           }
-          // Set silence timeout to 1200ms for both mobile and desktop for reliability
-          const silenceTimeout = 1200;
-          silenceTimerRef.current = setTimeout(() => {
-            if (isRecordingRef.current) {
-              console.log(`Silence timeout triggered after ${silenceTimeout}ms`);
-              stopRecording();
-            }
-          }, silenceTimeout);
         } finally {
           isProcessingRef.current = false
         }
@@ -252,7 +244,6 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
 
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error, event)
-        
         switch (event.error) {
           case 'no-speech':
             if (isMobile.current) {
