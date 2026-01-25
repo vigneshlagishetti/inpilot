@@ -200,9 +200,11 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
             }
           }
           // Update interim transcript for real-time display
+          let speechDetected = false;
           if (currentInterim.trim() && currentInterim.trim() !== interimTranscript.trim()) {
-            setInterimTranscript(currentInterim.trim())
-            console.log('Updated interim:', currentInterim.trim())
+            setInterimTranscript(currentInterim.trim());
+            speechDetected = true;
+            console.log('Updated interim:', currentInterim.trim());
           }
           if (newFinalText.trim()) {
             const cleanFinal = newFinalText.trim();
@@ -224,21 +226,17 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
             if (cleanFinal) {
               setInterimTranscript('');
             }
-            // Reset silence timer when speech is detected
-            if (silenceTimerRef.current) {
-              clearTimeout(silenceTimerRef.current);
-            }
-            // Auto-stop after silence - 1.5s in continuous mode, 5s in manual mode on mobile
-            const silenceDelay = autoModeRef.current 
-              ? 1500 // 1.5 seconds in continuous mode 
-              : (isMobile.current ? 5000 : 3000); // 5s for mobile manual, 3s for desktop manual
-            silenceTimerRef.current = setTimeout(() => {
-              if (isRecordingRef.current) {
-                console.log('Silence timeout triggered after', silenceDelay, 'ms');
-                stopRecording();
-              }
-            }, silenceDelay);
           }
+          // Always reset silence timer on any result
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+          }
+          silenceTimerRef.current = setTimeout(() => {
+            if (isRecordingRef.current) {
+              console.log('Silence timeout triggered after 1.5s');
+              stopRecording();
+            }
+          }, 1500);
         } finally {
           isProcessingRef.current = false
         }
@@ -725,6 +723,21 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           </div>
         </CardContent>
       </Card>
+
+      {/* Stop Button (manual override for mobile reliability) */}
+      {isRecording && (
+        <div className="flex justify-center mt-2">
+          <Button
+            onClick={() => stopRecording()}
+            variant="outline"
+            size="sm"
+            className="bg-red-100 text-red-700 border-red-300 hover:bg-red-200 hover:text-red-900"
+            style={{ minWidth: '100px' }}
+          >
+            Stop
+          </Button>
+        </div>
+      )}
     </div>
   )
 })
