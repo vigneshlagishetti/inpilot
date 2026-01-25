@@ -175,11 +175,12 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
             // Only process if i > resultIndexRef.current (ignore repeated indices)
             if (i < resultIndexRef.current) continue;
             let transcriptPiece = event.results[i][0].transcript.trim();
-            transcriptPiece = transcriptPiece.replace(/^(\w+)( \1)+/i, '$1');
+            // Remove repeated words within the phrase (e.g., 'okay okay' -> 'okay')
+            transcriptPiece = transcriptPiece.replace(/\b(\w+)( \1\b)+/gi, '$1');
             if (event.results[i].isFinal) {
               // Deduplicate at phrase level
-              if (phraseSetRef.current.has(transcriptPiece)) {
-                console.log('Phrase already added, skipping:', transcriptPiece);
+              if (phraseSetRef.current.has(transcriptPiece) || !transcriptPiece) {
+                console.log('Phrase already added or empty, skipping:', transcriptPiece);
               } else {
                 phraseSetRef.current.add(transcriptPiece);
                 setTranscript((prev) => {
@@ -202,17 +203,19 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           // Update interim transcript for real-time display
           let speechDetected = false;
           if (currentInterim.trim() && currentInterim.trim() !== interimTranscript.trim()) {
-            setInterimTranscript(currentInterim.trim());
+            // Remove repeated words in interim as well
+            const cleanInterim = currentInterim.trim().replace(/\b(\w+)( \1\b)+/gi, '$1');
+            setInterimTranscript(cleanInterim);
             speechDetected = true;
-            console.log('Updated interim:', currentInterim.trim());
+            console.log('Updated interim:', cleanInterim);
           }
           if (newFinalText.trim()) {
             const cleanFinal = newFinalText.trim();
-            // Remove repeated leading words (e.g., 'so so', 'okay okay')
-            const cleanPhrase = cleanFinal.replace(/^(\w+)( \1)+/i, '$1');
+            // Remove repeated words in final phrase
+            const cleanPhrase = cleanFinal.replace(/\b(\w+)( \1\b)+/gi, '$1');
             // Deduplicate at phrase level
-            if (phraseSetRef.current.has(cleanPhrase)) {
-              console.log('Phrase already added, skipping:', cleanPhrase);
+            if (phraseSetRef.current.has(cleanPhrase) || !cleanPhrase) {
+              console.log('Phrase already added or empty, skipping:', cleanPhrase);
             } else {
               phraseSetRef.current.add(cleanPhrase);
               setTranscript((prev) => {
@@ -642,7 +645,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                   if (buttonLocked || recognitionActive) return;
                   // Longer debounce for mobile, shorter for desktop
                   const now = Date.now();
-                  const debounceMs = isMobile.current ? 1200 : 500;
+                  // Increase debounce for mobile, and add extra lock for mobile browsers
+                  const debounceMs = isMobile.current ? 1800 : 600;
                   if (now - lastButtonPressRef.current < debounceMs) return;
                   lastButtonPressRef.current = now;
                   setButtonLocked(true);
