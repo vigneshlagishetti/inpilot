@@ -120,15 +120,16 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
         }
 
         const recognition = new SpeechRecognition()
-        recognition.continuous = true
-        recognition.interimResults = true
-        recognition.lang = 'en-US'
-        
-        // Mobile-specific settings
+        // On mobile, disable continuous mode and restart logic
         if (isMobile.current) {
-          recognition.maxAlternatives = 1
-          console.log('Mobile optimizations applied')
+          recognition.continuous = false;
+          recognition.maxAlternatives = 1;
+          console.log('Mobile optimizations applied: continuous mode disabled');
+        } else {
+          recognition.continuous = true;
         }
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -170,17 +171,19 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
         try {
           let currentInterim = ''
           let newFinalText = ''
-          // Process only new results starting from the last processed index
           for (let i = resultIndexRef.current; i < event.results.length; i++) {
-            // Only process if i > resultIndexRef.current (ignore repeated indices)
             if (i < resultIndexRef.current) continue;
             let transcriptPiece = event.results[i][0].transcript.trim();
-            // Remove repeated words within the phrase (e.g., 'okay okay' -> 'okay')
             transcriptPiece = transcriptPiece.replace(/\b(\w+)( \1\b)+/gi, '$1');
+            // Stricter deduplication: skip if phrase is substring or near-duplicate of last transcript
+            const lastTranscript = transcriptRef.current;
             if (event.results[i].isFinal) {
-              // Deduplicate at phrase level
-              if (phraseSetRef.current.has(transcriptPiece) || !transcriptPiece) {
-                console.log('Phrase already added or empty, skipping:', transcriptPiece);
+              if (
+                phraseSetRef.current.has(transcriptPiece) ||
+                !transcriptPiece ||
+                (lastTranscript && (lastTranscript.includes(transcriptPiece) || transcriptPiece.includes(lastTranscript)))
+              ) {
+                console.log('Phrase already added, empty, or near-duplicate, skipping:', transcriptPiece);
               } else {
                 phraseSetRef.current.add(transcriptPiece);
                 setTranscript((prev) => {
@@ -305,10 +308,15 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           console.log('Recognition restart already in progress, skipping')
           return
         }
-        // On mobile, prevent rapid restarts that can cause duplicates
+        // On mobile, do NOT restart recognition automatically
+        if (isMobile.current) {
+          console.log('Mobile: not restarting recognition automatically');
+          return;
+        }
+        // Desktop: allow restart
         if (isRecordingRef.current && recognitionRef.current && !isProcessingRef.current) {
           recognitionRestartingRef.current = true
-          const restartDelay = isMobile.current ? 1000 : 100 // Much longer delay on mobile
+          const restartDelay = 100;
           console.log(`Scheduling restart in ${restartDelay}ms`)
           setTimeout(() => {
             if (isRecordingRef.current && recognitionRef.current) {
@@ -317,11 +325,6 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                 recognitionRef.current.start()
               } catch (e) {
                 console.log('Could not restart recognition:', e)
-                // On mobile, if restart fails, stop recording to prevent loops
-                if (isMobile.current) {
-                  setIsRecording(false)
-                  onRecordingStateChange(false)
-                }
               }
             }
             recognitionRestartingRef.current = false
