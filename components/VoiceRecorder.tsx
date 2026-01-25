@@ -196,32 +196,41 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
             console.log('Updated interim:', currentInterim.trim())
           }
           if (newFinalText.trim()) {
-            const cleanFinal = newFinalText.trim()
-            console.log('Processing new final text:', cleanFinal)
+            const cleanFinal = newFinalText.trim();
+            console.log('Processing new final text:', cleanFinal);
             setTranscript((prev) => {
-              const newText = prev + (prev ? ' ' : '') + cleanFinal
-              transcriptRef.current = newText
-              console.log('Updated full transcript:', newText)
-              return newText
-            })
+              // Prevent duplicity: only append if not already at the end
+              const prevTrim = prev.trim();
+              if (
+                prevTrim.endsWith(cleanFinal) ||
+                prevTrim.split(' ').slice(-cleanFinal.split(' ').length).join(' ') === cleanFinal
+              ) {
+                console.log('Duplicate final text detected, skipping append');
+                return prev;
+              }
+              const newText = prev + (prev ? ' ' : '') + cleanFinal;
+              transcriptRef.current = newText;
+              console.log('Updated full transcript:', newText);
+              return newText;
+            });
             // Only clear interim if we have final text
             if (cleanFinal) {
-              setInterimTranscript('')
+              setInterimTranscript('');
             }
             // Reset silence timer when speech is detected
             if (silenceTimerRef.current) {
-              clearTimeout(silenceTimerRef.current)
+              clearTimeout(silenceTimerRef.current);
             }
             // Auto-stop after silence - shorter delay in continuous mode
             const silenceDelay = autoModeRef.current 
               ? 1000 // 1 second in continuous mode 
-              : (isMobile.current ? 4000 : 3000) // Longer delay in manual mode
+              : (isMobile.current ? 4000 : 3000); // Longer delay in manual mode
             silenceTimerRef.current = setTimeout(() => {
               if (isRecordingRef.current) {
-                console.log('Silence timeout triggered after', silenceDelay, 'ms')
-                stopRecording()
+                console.log('Silence timeout triggered after', silenceDelay, 'ms');
+                stopRecording();
               }
-            }, silenceDelay)
+            }, silenceDelay);
           }
         } finally {
           isProcessingRef.current = false
@@ -625,14 +634,19 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                 size="lg"
                 variant={isRecording ? 'destructive' : 'default'}
                 onPointerDown={(e) => {
-                  // Debounce: ignore if pressed again within 500ms
-                  const now = Date.now()
-                  if (now - lastButtonPressRef.current < 500) return
-                  lastButtonPressRef.current = now
+                  // Longer debounce for mobile, shorter for desktop
+                  const now = Date.now();
+                  const debounceMs = isMobile.current ? 1000 : 500;
+                  if (now - lastButtonPressRef.current < debounceMs) return;
+                  lastButtonPressRef.current = now;
+                  // Immediately disable button until state changes
+                  if (!isRecording) {
+                    e.currentTarget.disabled = true;
+                  }
                   if (isRecording) {
-                    stopRecording()
+                    stopRecording();
                   } else {
-                    startRecording()
+                    startRecording();
                   }
                 }}
                 className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full transition-all duration-300 select-none ${
