@@ -237,8 +237,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           if (silenceTimerRef.current) {
             clearTimeout(silenceTimerRef.current);
           }
-          // Reduce silence timeout for mobile for faster response
-          const silenceTimeout = isMobile.current ? 600 : 1200;
+          // Set silence timeout to 1200ms for both mobile and desktop for reliability
+          const silenceTimeout = 1200;
           silenceTimerRef.current = setTimeout(() => {
             if (isRecordingRef.current) {
               console.log(`Silence timeout triggered after ${silenceTimeout}ms`);
