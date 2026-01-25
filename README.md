@@ -1,7 +1,47 @@
 
-# InPilot: AI Interview Assistant
 
-An advanced web application for practicing interview questions using voice input and receiving comprehensive, AI-generated answers. Built with Next.js, TypeScript, Supabase, Clerk, and OpenAI GPT-4.
+# InPilot.ai 🎤🤖
+
+<div align="center">
+   <img src="https://img.shields.io/badge/Next.js_14-000000?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js 14" />
+   <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+   <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+   <img src="https://img.shields.io/badge/Shadcn_UI-111827?style=for-the-badge&logo=react&logoColor=white" alt="Shadcn UI" />
+   <img src="https://img.shields.io/badge/Clerk-3A3A3A?style=for-the-badge&logo=clerk&logoColor=white" alt="Clerk" />
+   <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+   <img src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI" />
+   <img src="https://img.shields.io/badge/Framer_Motion-EF008F?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion" />
+</div>
+
+<p align="center">
+   <b>The future of AI-powered interview practice with voice and instant feedback</b>
+</p>
+
+<div align="center">
+   <p>An intelligent platform for practicing interview questions using your voice, with real-time transcription and AI-generated answers. Built with modern web technologies and a sleek, user-friendly design.</p>
+</div>
+
+## Highlights
+
+<table>
+   <tr>
+      <td align="center" width="33%">
+         <h3>🎤 Voice Interview Practice</h3>
+         <p>Real-time voice recording, silence detection, and browser-based speech-to-text for a natural interview experience.</p>
+      </td>
+      <td align="center" width="33%">
+         <h3>🤖 AI-Powered Answers</h3>
+         <p>OpenAI GPT-4 generates direct answers, explanations, code, and complexity analysis for your questions.</p>
+      </td>
+      <td align="center" width="33%">
+         <h3>🔒 Secure & Modern</h3>
+         <p>Authentication with Clerk, data storage with Supabase, and a beautiful UI with Tailwind, Shadcn, and Framer Motion.</p>
+      </td>
+   </tr>
+</table>
+
+<br />
 
 ## What I Have Done
 
@@ -16,19 +56,82 @@ An advanced web application for practicing interview questions using voice input
 
 ---
 
+
 ## Features
 
-- 🎤 **Voice Recording**: Real-time voice detection with automatic silence detection (stops after 2 seconds of silence)
-- 🗣️ **Speech Recognition**: Built-in browser speech-to-text using Web Speech API
-- 🤖 **AI-Powered Answers**: Get comprehensive answers with:
-  - Direct, concise answer
-  - Detailed explanation with context
-  - Real-world examples
-  - Code solutions (brute force & optimal)
-  - Time & space complexity analysis
-- 🔐 **Authentication**: Secure user authentication with Clerk
-- 💾 **Database**: Supabase for storing interview sessions and history
-- 🎨 **Beautiful UI**: Modern design with Tailwind CSS and Framer Motion animations
+<details>
+<summary><b>🎤 Voice Recording & Transcription</b></summary>
+<br />
+Real-time voice detection with automatic silence detection (stops after 2 seconds of silence). Built-in browser speech-to-text using Web Speech API for seamless, hands-free interview practice.
+</details>
+
+<details>
+<summary><b>🤖 AI-Powered Answers</b></summary>
+<br />
+Get comprehensive answers powered by OpenAI GPT-4:
+<ul>
+   <li>Direct, concise answer</li>
+   <li>Detailed explanation with context</li>
+   <li>Real-world examples</li>
+   <li>Code solutions (brute force & optimal)</li>
+   <li>Time & space complexity analysis</li>
+</ul>
+</details>
+
+<details>
+<summary><b>🔐 Secure Authentication</b></summary>
+<br />
+User authentication and session management with Clerk. Supports email/password and social login. Dashboard and history are protected routes.
+</details>
+
+<details>
+<summary><b>💾 Database & History</b></summary>
+<br />
+Interview sessions and answer history are stored securely in Supabase. Easily review past questions and answers.
+</details>
+
+<details>
+<summary><b>🎨 Beautiful UI</b></summary>
+<br />
+Modern, responsive design with Tailwind CSS, Shadcn UI, and Framer Motion animations for a delightful user experience.
+</details>
+
+<br />
+
+## UI Animations & Visual Effects
+
+InPilot.ai features a modern, animated interface to enhance the user experience:
+
+<table>
+   <tr>
+      <td width="33%" align="center">
+         <h3>🔄 Pulse Glow Effects</h3>
+         <p>Dynamic pulsing animations around the microphone and answer cards.</p>
+      </td>
+      <td width="33%" align="center">
+         <h3>💬 Real-time Transcript</h3>
+         <p>Live updating transcript with smooth fade-in and highlight effects.</p>
+      </td>
+      <td width="33%" align="center">
+         <h3>✨ Animated Buttons</h3>
+         <p>Interactive button hover and click animations for a tactile feel.</p>
+      </td>
+   </tr>
+   <tr>
+      <td width="33%" align="center">
+         <h3>📊 Progress Indicators</h3>
+         <p>Animated progress bars and loading spinners during answer generation.</p>
+      </td>
+      <td width="33%" align="center">
+         <h3>🌈 Gradient Transitions</h3>
+         <p>Smooth color shifts and gradients across UI elements.</p>
+      </td>
+      <td width="33%" align="center">
+         <h3>🟢 Status Feedback</h3>
+         <p>Visual feedback for recording, processing, and errors.</p>
+      </td>
+   </tr>
+</table>
 
 ## Tech Stack
 
