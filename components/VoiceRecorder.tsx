@@ -23,6 +23,15 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   const [interimTranscript, setInterimTranscript] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [autoMode, setAutoMode] = useState(autoStart)
+
+    // When autoMode changes, start or stop recording automatically
+    useEffect(() => {
+      if (autoMode && !isRecording) {
+        startRecording();
+      } else if (!autoMode && isRecording) {
+        stopRecording();
+      }
+    }, [autoMode]);
   const [isPaused, setIsPaused] = useState(false) // Paused after generating answer
   const [buttonLocked, setButtonLocked] = useState(false);
   const [recognitionActive, setRecognitionActive] = useState(false);
@@ -325,7 +334,6 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   const stopRecording = () => {
     setIsRecording(false)
     onRecordingStateChange(false)
-    
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
@@ -333,25 +341,20 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
         console.log('Recognition already stopped')
       }
     }
-    
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current)
     }
-
     // Use ref to get the latest transcript value
     const finalText = transcriptRef.current.trim()
     console.log('Stopping recording, final text:', finalText)
     console.log('Auto mode enabled:', autoModeRef.current)
-    
     if (finalText) {
       // Always generate an answer for any speech input
       console.log('Processing speech:', finalText)
       onTranscriptionComplete(finalText)
-      
       // Detect if this is a question for better user feedback
       const isQuestion = detectQuestion(finalText)
       console.log('Is question detected:', isQuestion)
-      
       if (isQuestion) {
         toast({
           title: 'Question Detected',
@@ -363,11 +366,27 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           description: 'Generating response...',
         })
       }
-      
-      // Pause auto mode to let user review the answer
+      // In auto mode, automatically resume listening after short delay
       if (autoModeRef.current) {
-        setIsPaused(true)
-        console.log('Auto mode: Paused for answer review')
+        setTimeout(() => {
+          setTranscript('')
+          setInterimTranscript('')
+          transcriptRef.current = ''
+          lastProcessedResultRef.current = ''
+          resultIndexRef.current = 0
+          isProcessingRef.current = false
+          phraseSetRef.current = new Set();
+          startRecording();
+        }, 1200);
+      } else {
+        // In manual mode, clear transcript for next input
+        setTranscript('')
+        setInterimTranscript('')
+        transcriptRef.current = ''
+        lastProcessedResultRef.current = ''
+        resultIndexRef.current = 0
+        isProcessingRef.current = false
+        phraseSetRef.current = new Set();
       }
     } else {
       console.log('No speech detected')
@@ -492,10 +511,20 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
 
   return (
     <div className="space-y-4">
-      {/* Auto Mode Toggle */}
+      {/* Manual/Continuous Mode Toggle */}
       <div className="flex items-center justify-center space-x-3 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-white/20 dark:border-white/10 hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-300 group">
         <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Continuous Mode</span>
-        {/* Toggle switch and other JSX should go here */}
+        <button
+          type="button"
+          aria-pressed={autoMode}
+          onClick={() => setAutoMode((prev) => !prev)}
+          className={`ml-2 w-10 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${autoMode ? 'bg-green-500' : 'bg-gray-300'}`}
+        >
+          <span
+            className={`inline-block w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-300 ${autoMode ? 'translate-x-4' : ''}`}
+          />
+        </button>
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{autoMode ? 'On' : 'Off'}</span>
       </div>
 
       {/* Resume Button (only show when paused in auto mode) */}
