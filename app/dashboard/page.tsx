@@ -854,15 +854,24 @@ export default function DashboardPage() {
                                   setCurrentQuestion(item.question)
                                   setCurrentAnswer(item.answer)
                                 }}
-                                className="w-full text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 min-h-[44px]"
+                                className="w-full text-left p-3 pr-12 rounded-lg hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-900/20 dark:hover:to-pink-900/20 transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700 min-h-[44px] hover:shadow-md cursor-pointer"
                               >
-                                <p className="text-sm font-medium line-clamp-2 text-gray-900 dark:text-gray-100 pr-6">
-                                  {item.question}
-                                </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  {item.timestamp.toLocaleTimeString()}
-                                </p>
+                                <div className="flex items-start gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium line-clamp-2 text-gray-900 dark:text-gray-100">
+                                      {item.question}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                                      <Clock className="w-3 h-3" />
+                                      {item.timestamp.toLocaleTimeString()}
+                                    </p>
+                                  </div>
+                                  <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                                      View →
+                                    </span>
+                                  </div>
+                                </div>
                               </button>
                               {item.id && (
                                 <button
@@ -870,8 +879,9 @@ export default function DashboardPage() {
                                     e.stopPropagation()
                                     handleDeleteHistoryItem(item.id!)
                                   }}
-                                  className="absolute right-2 top-3 p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                  className="absolute right-2 top-2 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all duration-200 hover:scale-110"
                                   title="Delete from history"
+                                  aria-label="Delete this question from history"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
