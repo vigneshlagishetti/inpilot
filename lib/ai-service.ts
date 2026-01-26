@@ -27,7 +27,8 @@ export async function generateAnswer(
   question: string,
   resumeContent?: string,
   jobRole?: string,
-  customInstructions?: string
+  customInstructions?: string,
+  projectContext?: string
 ): Promise<AnswerResponse> {
   console.log('=== GENERATE ANSWER DEBUG ===')
   console.log('Question:', question)
@@ -54,12 +55,13 @@ export async function generateAnswer(
 
     // If not found, try other patterns
     if (!extractedName) {
-      const nameMatch = resumeContent.match(/(?:name|Name)[:\s]*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/)
-      extractedName = nameMatch ? nameMatch[1].trim() : ''
+      const nameMatch = resumeContent.match(/(?:name is|I'm|I am)\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)/i)
+      extractedName = nameMatch ? nameMatch[1] : ''
     }
 
     console.log('Extracted name:', extractedName)
     console.log('Resume content preview:', resumeContent.substring(0, 200))
+    console.log('Project context provided:', !!projectContext)
 
     // ALWAYS act as the candidate when resume is uploaded
     systemPrompt = `YOU ARE THE CANDIDATE IN AN INTERVIEW. You are answering questions about yourself.
@@ -71,6 +73,15 @@ ${jobRole ? `POSITION YOU'RE APPLYING FOR: ${jobRole}` : ''}
 YOUR COMPLETE BACKGROUND:
 ${resumeContent}
 
+${projectContext ? `
+---PROJECT CONTEXT / README---
+${projectContext}
+-----------------------------
+CRITICAL: The user has provided detailed documentation about their specific project(s).
+If the question is about "my project", "the architecture", "how user auth works", etc., YOU MUST REFER TO THIS CONTEXT.
+Answer specifically using the file names, technologies, and structure described above.
+` : ''}
+
 ${customInstructions ? `SPECIAL INSTRUCTIONS:\n${customInstructions}\n` : ''}
 
 CRITICAL INSTRUCTIONS:
@@ -79,6 +90,7 @@ CRITICAL INSTRUCTIONS:
 - Speak in first person: "I am...", "My name is...", "I worked at..."
 - For "what is your name" or "introduce yourself": Start with "My name is ${extractedName}" or "I'm ${extractedName}"
 - For technical questions: Use your skills/projects from the resume and relate them to ${jobRole || 'the role'}
+- If Project Context is provided above, use it to answer deep questions about your specific implementation.
 - Be confident and conversational as if speaking to an interviewer${jobRole ? ` for a ${jobRole} position` : ''}
 
 SPEAKING STYLE:
@@ -107,7 +119,7 @@ ANSWER FORMAT (use these exact section markers):
 [REQUIRED: 3-4 lines giving a comprehensive, direct, conversational opening. This MUST be filled for ANY question type. Start answering immediately.]
 
 ---DETAILED_EXPLANATION---
-[2-3 paragraphs explaining your understanding and approach in detail]
+[2-3 paragraphs explaining your understanding and approach in detail. If Project Context is provided and relevant, explain how the project implements this.]
 
 ---EXAMPLE---
 [1 paragraph with a concrete example, or write "N/A" if not applicable]

@@ -5,12 +5,12 @@ import { auth } from '@clerk/nextjs/server'
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth()
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { question, resumeContent, jobRole, customInstructions } = await request.json()
+    const { question, resumeContent, jobRole, customInstructions, projectContext } = await request.json()
 
     if (!question || typeof question !== 'string') {
       return NextResponse.json({ error: 'Invalid question' }, { status: 400 })
@@ -18,10 +18,11 @@ export async function POST(request: NextRequest) {
 
     console.log('Received question:', question)
     console.log('Has resume content:', !!resumeContent)
+    console.log('Has project context:', !!projectContext)
     console.log('Job role:', jobRole || 'Not specified')
     console.log('Custom instructions:', customInstructions || 'None')
 
-    const answer = await generateAnswer(question, resumeContent, jobRole, customInstructions)
+    const answer = await generateAnswer(question, resumeContent, jobRole, customInstructions, projectContext)
 
     return NextResponse.json(answer)
   } catch (error: any) {

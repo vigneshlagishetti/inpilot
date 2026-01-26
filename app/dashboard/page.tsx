@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react'
 import { UserButton, useUser } from '@clerk/nextjs'
 import { VoiceRecorder } from '@/components/VoiceRecorder'
 import { AnswerDisplay } from '@/components/AnswerDisplay'
-import { ResumeUploader } from '@/components/ResumeUploader'
+import { ResumeUploader, Project } from '@/components/ResumeUploader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -13,6 +13,7 @@ import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, T
 import { useToast } from '@/components/ui/use-toast'
 import { motion } from 'framer-motion'
 import { useTheme } from '@/components/ThemeProvider'
+import { supabase } from '@/lib/supabase'
 
 interface Answer {
   directAnswer: string
@@ -62,6 +63,7 @@ export default function DashboardPage() {
   const [reviewRating, setReviewRating] = useState<number>(0)
   const [userReviews, setUserReviews] = useState<UserReview[]>([])
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '', files: [] as File[] })
+  const [projects, setProjects] = useState<Project[]>([])
   const { toast } = useToast()
   const { theme, toggleTheme } = useTheme()
   const { user } = useUser()
@@ -70,6 +72,7 @@ export default function DashboardPage() {
   const resumeContentRef = useRef<string>('')
   const jobRoleRef = useRef<string>('')
   const customInstructionsRef = useRef<string>('')
+  const projectsRef = useRef<Project[]>([])
   const answerSectionRef = useRef<HTMLDivElement>(null)
   const recordingSectionRef = useRef<HTMLDivElement>(null)
   const voiceRecorderRef = useRef<any>(null)
@@ -89,6 +92,42 @@ export default function DashboardPage() {
     // Load reviews from API
     loadReviews()
   }, [])
+
+  // Load projects from Supabase when user is available
+  useEffect(() => {
+    if (user?.id) {
+      loadProjects()
+    }
+  }, [user?.id])
+
+  const loadProjects = async () => {
+    try {
+      if (!user?.id) return
+
+      const { data, error } = await supabase
+        .from('user_projects')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      if (data) {
+        setProjects(data.map(p => ({
+          id: p.id,
+          name: p.name,
+          content: p.content
+        })))
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error)
+      toast({
+        title: 'Error Loading Projects',
+        description: 'Could not fetch your saved projects.',
+        variant: 'destructive',
+      })
+    }
+  }
 
   // Load all reviews from API/database
   const loadReviews = async () => {
@@ -140,6 +179,10 @@ export default function DashboardPage() {
     customInstructionsRef.current = customInstructions
   }, [customInstructions])
 
+  useEffect(() => {
+    projectsRef.current = projects
+  }, [projects])
+
   const handleResumeContent = (content: string, fileName: string) => {
     console.log('=== DASHBOARD handleResumeContent ===')
     console.log('Received content length:', content.length)
@@ -164,6 +207,52 @@ export default function DashboardPage() {
   const handleCustomInstructionsChange = (instructions: string) => {
     setCustomInstructions(instructions)
     localStorage.setItem('interviewAssistant_instructions', instructions)
+  }
+
+  const handleAddProject = async (name: string, content: string) => {
+    try {
+      if (!user?.id) {
+        toast({ title: 'Error', description: 'You must be logged in to save projects.', variant: 'destructive' })
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('user_projects')
+        .insert({
+          user_id: user.id,
+          name,
+          content
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      if (data) {
+        setProjects(prev => [{ id: data.id, name: data.name, content: data.content }, ...prev])
+        toast({ title: 'Project Saved', description: `${name} has been added to your context.` })
+      }
+    } catch (error) {
+      console.error('Error saving project:', error)
+      toast({ title: 'Error', description: 'Failed to save project.', variant: 'destructive' })
+    }
+  }
+
+  const handleDeleteProject = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_projects')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      setProjects(prev => prev.filter(p => p.id !== id))
+      toast({ title: 'Project Deleted', description: 'Project removed from context.' })
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      toast({ title: 'Error', description: 'Failed to delete project.', variant: 'destructive' })
+    }
   }
 
   const handleDeleteReview = async (reviewId: string) => {
@@ -220,6 +309,7 @@ export default function DashboardPage() {
     setResumeFileName('')
     setJobRole('')
     setCustomInstructions('')
+    // Note: Not clearing projects as they are permanent in DB
 
     // Clear localStorage
     localStorage.removeItem('interviewAssistant_resume')
@@ -228,8 +318,8 @@ export default function DashboardPage() {
     localStorage.removeItem('interviewAssistant_instructions')
 
     toast({
-      title: 'All Settings Cleared',
-      description: 'Your resume, job role, and custom instructions have been removed.',
+      title: 'Settings Cleared',
+      description: 'Your local settings have been removed. Saved projects remain.',
     })
   }
 
@@ -251,6 +341,15 @@ export default function DashboardPage() {
     const currentResumeContent = resumeContentRef.current
     const currentJobRole = jobRoleRef.current
     const currentInstructions = customInstructionsRef.current
+    const currentProjects = projectsRef.current
+
+    // Combine projects into a single context string
+    let currentProjectContext = ''
+    if (currentProjects.length > 0) {
+      currentProjectContext = currentProjects.map(p =>
+        `=== PROJECT: ${p.name} ===\n${p.content}\n=======================`
+      ).join('\n\n')
+    }
 
     console.log('=== DASHBOARD DEBUG ===')
     console.log('Question:', transcription)
@@ -258,6 +357,8 @@ export default function DashboardPage() {
     console.log('Resume content length (from ref):', currentResumeContent.length)
     console.log('Job role:', currentJobRole)
     console.log('Custom instructions:', currentInstructions)
+    console.log('Project Context Length:', currentProjectContext.length)
+    console.log('Num Projects:', currentProjects.length)
 
     try {
       console.log('Sending request to /api/generate-answer...')
@@ -271,6 +372,7 @@ export default function DashboardPage() {
           resumeContent: currentResumeContent || undefined,
           jobRole: currentJobRole || undefined,
           customInstructions: currentInstructions || undefined,
+          projectContext: currentProjectContext || undefined,
         }),
       })
 
@@ -636,6 +738,9 @@ export default function DashboardPage() {
                 onContentExtracted={handleResumeContent}
                 onJobRoleChange={handleJobRoleChange}
                 onCustomInstructionsChange={handleCustomInstructionsChange}
+                projects={projects}
+                onAddProject={handleAddProject}
+                onDeleteProject={handleDeleteProject}
                 initialJobRole={jobRole}
                 initialInstructions={customInstructions}
               />

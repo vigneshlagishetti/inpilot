@@ -1,23 +1,39 @@
 'use client'
 
-import { useState } from 'react'
-import { Upload, File, X, Check } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Upload, File, X, Check, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
+
+// Update props interface
+export interface Project {
+  id: string
+  name: string
+  content: string
+}
 
 interface ResumeUploaderProps {
   onContentExtracted: (content: string, fileName: string) => void
   onJobRoleChange: (role: string) => void
   onCustomInstructionsChange: (instructions: string) => void
+  // New props for project management
+  projects?: Project[]
+  onAddProject?: (name: string, content: string) => Promise<void>
+  onUpdateProject?: (id: string, name: string, content: string) => Promise<void>
+  onDeleteProject?: (id: string) => Promise<void>
   initialJobRole?: string
   initialInstructions?: string
 }
 
-export function ResumeUploader({ 
-  onContentExtracted, 
-  onJobRoleChange, 
+export function ResumeUploader({
+  onContentExtracted,
+  onJobRoleChange,
   onCustomInstructionsChange,
+  projects = [],
+  onAddProject,
+  onUpdateProject,
+  onDeleteProject,
   initialJobRole = '',
   initialInstructions = ''
 }: ResumeUploaderProps) {
@@ -26,7 +42,31 @@ export function ResumeUploader({
   const [content, setContent] = useState<string>('')
   const [jobRole, setJobRole] = useState<string>(initialJobRole)
   const [customInstructions, setCustomInstructions] = useState<string>(initialInstructions)
+  const [newProjectName, setNewProjectName] = useState('')
+  const [newProjectContent, setNewProjectContent] = useState('')
+  const [isAddingProject, setIsAddingProject] = useState(false)
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null)
+
   const { toast } = useToast()
+
+  // Ref for click outside detection
+  const formRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (formRef.current && !formRef.current.contains(event.target as Node)) {
+        setIsAddingProject(false)
+      }
+    }
+
+    if (isAddingProject) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isAddingProject])
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -116,81 +156,88 @@ export function ResumeUploader({
     setIsUploaded(false)
     setContent('')
     onContentExtracted('', '')
-    
-    // Clear job role and custom instructions
+
+    // Clear job role, custom instructions
     setJobRole('')
     setCustomInstructions('')
     onJobRoleChange('')
     onCustomInstructionsChange('')
-    
+    // Note: We don't clear projects here as they are persistent in DB
+
     toast({
-      title: 'All Settings Cleared',
-      description: 'Resume, job role, and custom instructions have been removed.',
+      title: 'Settings Cleared',
+      description: 'Resume, job role, and instructions have been cleared.',
     })
   }
 
+  const handleAddProject = async () => {
+    if (!newProjectName.trim() || !newProjectContent.trim()) {
+      toast({ title: 'Missing Info', description: 'Please provide both name and content.', variant: 'destructive' })
+      return
+    }
+    if (onAddProject) {
+      await onAddProject(newProjectName, newProjectContent)
+      setNewProjectName('')
+      setNewProjectContent('')
+      setIsAddingProject(false)
+    }
+  }
+
   return (
-    <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
-      <CardContent className="p-6">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Your Resume/Context</h3>
-            {isUploaded && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRemove}
-                className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-              >
-                <X className="w-4 h-4 mr-1" />
-                Clear All
-              </Button>
-            )}
-          </div>
+    <div className="space-y-6">
+      <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Your Resume & Profile</h3>
+              {isUploaded && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemove}
+                  className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Clear Profile
+                </Button>
+              )}
+            </div>
 
-          {/* Job Role Input */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Job Role / Position (Optional)
-            </label>
-            <input
-              type="text"
-              value={jobRole}
-              onChange={(e) => {
-                setJobRole(e.target.value)
-                onJobRoleChange(e.target.value)
-              }}
-              placeholder="e.g., Full Stack Developer, Data Scientist"
-              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              AI will tailor answers for this role
-            </p>
-          </div>
+            {/* Job Role Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Job Role / Position (Optional)
+              </label>
+              <input
+                type="text"
+                value={jobRole}
+                onChange={(e) => {
+                  setJobRole(e.target.value)
+                  onJobRoleChange(e.target.value)
+                }}
+                placeholder="e.g., Full Stack Developer, Data Scientist"
+                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              />
+            </div>
 
-          {/* Custom Instructions */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Custom Instructions (Optional)
-            </label>
-            <textarea
-              value={customInstructions}
-              onChange={(e) => {
-                setCustomInstructions(e.target.value)
-                onCustomInstructionsChange(e.target.value)
-              }}
-              placeholder="e.g., Focus on React/Node.js, Keep answers under 2 minutes, Emphasize teamwork..."
-              className="w-full h-20 px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              How should AI respond? These instructions persist.
-            </p>
-          </div>
+            {/* Custom Instructions */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Custom Instructions (Optional)
+              </label>
+              <textarea
+                value={customInstructions}
+                onChange={(e) => {
+                  setCustomInstructions(e.target.value)
+                  onCustomInstructionsChange(e.target.value)
+                }}
+                placeholder="e.g., Focus on React/Node.js, Keep answers under 2 minutes..."
+                className="w-full h-20 px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              />
+            </div>
 
-          {!isUploaded ? (
-            <div className="space-y-4">
-              {/* File Upload */}
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 sm:p-6 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-gray-50/50 dark:bg-gray-800/50">
+            {!isUploaded ? (
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-gray-50/50 dark:bg-gray-800/50">
                 <input
                   type="file"
                   id="resume-upload"
@@ -202,66 +249,92 @@ export function ResumeUploader({
                   htmlFor="resume-upload"
                   className="cursor-pointer flex flex-col items-center space-y-2"
                 >
-                  <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-500" />
-                  <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">Upload Resume/Document</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">TXT, PDF, or DOCX (Max 5MB)</p>
+                  <Upload className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Upload Resume</p>
                 </label>
               </div>
-
-              {/* Or Paste Text */}
-              <div className="space-y-2">
-                <p className="text-xs sm:text-sm font-medium text-center text-gray-500 dark:text-gray-400">OR</p>
-                <textarea
-                  placeholder="Paste your resume/introduction text here... (Click outside when done)"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  onBlur={(e) => {
-                    const text = e.target.value.trim()
-                    console.log('=== RESUME UPLOADER onBlur ===')
-                    console.log('Text length:', text.length)
-                    console.log('Text preview:', text.substring(0, 100))
-                    
-                    if (text && text.length > 10) {
-                      setFileName('Manual Entry')
-                      setIsUploaded(true)
-                      console.log('Calling onContentExtracted with:', text.length, 'characters')
-                      onContentExtracted(text, 'Manual Entry')
-                      toast({
-                        title: 'Content Saved',
-                        description: 'Your content is ready to use in answers.',
-                      })
-                    } else {
-                      console.log('Text too short, not saving')
-                    }
-                  }}
-                  className="w-full h-32 p-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md text-xs sm:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                  Type or paste your content, then click outside to save
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3 sm:p-4">
-              <div className="flex items-start space-x-2 sm:space-x-3">
-                <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <File className="w-3 h-3 sm:w-4 sm:h-4 text-green-600 dark:text-green-400 shrink-0" />
-                    <p className="text-xs sm:text-sm font-medium text-green-900 dark:text-green-100 truncate">{fileName}</p>
-                  </div>
-                  <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-                    {content.length} characters loaded
-                  </p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                    ✓ Now say "introduce yourself" or "tell me about yourself" to use this content!
-                  </p>
+            ) : (
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                <div className="flex items-center space-x-2">
+                  <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  <span className="text-sm font-medium text-green-900 dark:text-green-100">{fileName}</span>
                 </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Project Manager Section */}
+      <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
+        <CardContent className="p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Project Context</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Add READMEs or details for specific projects (Saved permanently)</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAddingProject(!isAddingProject)}
+              className="w-full sm:w-auto border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
+            >
+              {isAddingProject ? 'Cancel' : '+ Add Project'}
+            </Button>
+          </div>
+
+          {isAddingProject && (
+            <div ref={formRef} className="mb-6 p-4 border border-blue-100 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg space-y-3">
+              <input
+                type="text"
+                placeholder="Project Name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              />
+              <textarea
+                placeholder="Paste README or Project Details here..."
+                value={newProjectContent}
+                onChange={(e) => setNewProjectContent(e.target.value)}
+                className="w-full h-32 px-3 py-2 border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-md text-sm font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" onClick={handleAddProject} className="w-full sm:w-auto">Save Project</Button>
               </div>
             </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+
+          <div className="space-y-3">
+            {projects.length === 0 && !isAddingProject ? (
+              <p className="text-center text-gray-500 dark:text-gray-400 text-sm py-4">No projects added yet.</p>
+            ) : (
+              projects.map((project) => (
+                <div key={project.id} className="group border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:border-blue-300 dark:hover:border-blue-700 transition-colors bg-white dark:bg-gray-800">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">{project.name}</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{project.content.substring(0, 150)}...</p>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      {/* Edit button could go here, for now just delete */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDeleteProject && onDeleteProject(project.id)}
+                        className="h-8 w-8 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-full"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
+
+
