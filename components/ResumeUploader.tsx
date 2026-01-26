@@ -46,6 +46,8 @@ export function ResumeUploader({
   const [newProjectContent, setNewProjectContent] = useState('')
   const [isAddingProject, setIsAddingProject] = useState(false)
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null)
+  const [uploadMethod, setUploadMethod] = useState<'file' | 'paste'>('file')
+  const [pastedText, setPastedText] = useState('')
 
   const { toast } = useToast()
 
@@ -136,18 +138,24 @@ export function ResumeUploader({
     }
   }
 
-  const handlePasteContent = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const text = event.clipboardData.getData('text')
-    if (text) {
-      setContent(text)
-      setFileName('Pasted Content')
-      setIsUploaded(true)
-      onContentExtracted(text, 'Pasted Content')
+  const handleSubmitPastedText = () => {
+    if (!pastedText.trim()) {
       toast({
-        title: 'Content Added',
-        description: 'Your content is ready to use in answers.',
+        title: 'No Content',
+        description: 'Please paste or type your resume content.',
+        variant: 'destructive',
       })
+      return
     }
+
+    setContent(pastedText)
+    setFileName('Pasted Resume')
+    setIsUploaded(true)
+    onContentExtracted(pastedText, 'Pasted Resume')
+    toast({
+      title: 'Resume Added',
+      description: 'Your resume content is ready to use in answers.',
+    })
   }
 
   const handleRemove = () => {
@@ -155,6 +163,7 @@ export function ResumeUploader({
     setFileName('')
     setIsUploaded(false)
     setContent('')
+    setPastedText('')
     onContentExtracted('', '')
 
     // Clear job role, custom instructions
@@ -237,21 +246,67 @@ export function ResumeUploader({
             </div>
 
             {!isUploaded ? (
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-gray-50/50 dark:bg-gray-800/50">
-                <input
-                  type="file"
-                  id="resume-upload"
-                  accept=".txt,.pdf,.doc,.docx"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="resume-upload"
-                  className="cursor-pointer flex flex-col items-center space-y-2"
-                >
-                  <Upload className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Upload Resume</p>
-                </label>
+              <div className="space-y-3">
+                {/* Tab Buttons */}
+                <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => setUploadMethod('file')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${uploadMethod === 'file'
+                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                      }`}
+                  >
+                    Upload File
+                  </button>
+                  <button
+                    onClick={() => setUploadMethod('paste')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${uploadMethod === 'paste'
+                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                      }`}
+                  >
+                    Paste Text
+                  </button>
+                </div>
+
+                {/* File Upload Tab */}
+                {uploadMethod === 'file' && (
+                  <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-gray-50/50 dark:bg-gray-800/50">
+                    <input
+                      type="file"
+                      id="resume-upload"
+                      accept=".txt,.pdf,.doc,.docx"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="resume-upload"
+                      className="cursor-pointer flex flex-col items-center space-y-2"
+                    >
+                      <Upload className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Upload Resume</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">TXT, PDF, DOC, or DOCX</p>
+                    </label>
+                  </div>
+                )}
+
+                {/* Paste Text Tab */}
+                {uploadMethod === 'paste' && (
+                  <div className="space-y-3">
+                    <textarea
+                      value={pastedText}
+                      onChange={(e) => setPastedText(e.target.value)}
+                      placeholder="Paste your resume text here..."
+                      className="w-full h-48 px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    />
+                    <Button
+                      onClick={handleSubmitPastedText}
+                      className="w-full"
+                    >
+                      Submit Resume
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
