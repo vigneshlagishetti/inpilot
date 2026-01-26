@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const name = formData.get('name') as string
     const email = formData.get('email') as string
     const message = formData.get('message') as string
-    
+
     // Get files if any
     const files: { name: string; content: Buffer; mimetype: string }[] = []
     for (const [key, value] of formData.entries()) {
@@ -65,8 +65,11 @@ export async function POST(request: NextRequest) {
     `
 
     // Email options
+    // Email options
+    const senderEmail = process.env.SENDGRID_FROM_EMAIL || 'lvigneshbunty789@gmail.com'
+
     const mailOptions = {
-      from: 'lvigneshbunty789@gmail.com',
+      from: senderEmail,
       to: 'lvigneshbunty789@gmail.com',
       subject: `Inpilot Contact: Message from ${name}`,
       html: htmlContent,
@@ -90,7 +93,7 @@ export async function POST(request: NextRequest) {
     // Send confirmation email to user (only if email is valid)
     if (email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       const confirmMailOptions = {
-        from: 'lvigneshbunty789@gmail.com',
+        from: senderEmail,
         to: email,
         subject: 'Thank you for contacting Inpilot!',
         html: `
@@ -124,11 +127,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Email sent successfully' 
+    return NextResponse.json({
+      success: true,
+      message: 'Email sent successfully'
     })
-    
+
   } catch (error) {
     console.error('Error sending email:', error)
     // Return the error message for debugging (remove in production)
