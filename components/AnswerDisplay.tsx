@@ -54,6 +54,34 @@ function CopyButton({ text }: { text: string }) {
   )
 }
 
+// Helper component to render code with syntax highlighting for comments
+function CodeBlock({ code }: { code: string }) {
+  const lines = code.split('\n')
+
+  return (
+    <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-3 sm:p-4 rounded-lg overflow-x-auto text-xs sm:text-sm font-mono">
+      <code>
+        {lines.map((line, index) => {
+          // Check if line is a comment
+          const trimmed = line.trim()
+          const isComment = trimmed.startsWith('#')
+
+          return (
+            <div key={index} className="leading-6">
+              {isComment ? (
+                <span className="text-green-400 italic opacity-90">{line}</span>
+              ) : (
+                <span className="text-gray-100">{line}</span>
+              )}
+            </div>
+          )
+        })}
+      </code>
+    </pre>
+  )
+}
+
+
 export function AnswerDisplay({
   question,
   directAnswer,
@@ -193,9 +221,7 @@ export function AnswerDisplay({
                 <CopyButton text={bruteForceCode} />
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-3 sm:p-4 rounded-lg overflow-x-auto text-xs sm:text-sm">
-                  <code>{bruteForceCode}</code>
-                </pre>
+                <CodeBlock code={bruteForceCode} />
               </CardContent>
             </Card>
           )}
@@ -276,9 +302,7 @@ export function AnswerDisplay({
                 <CopyButton text={optimalCode} />
               </CardHeader>
               <CardContent className="p-4 pt-0">
-                <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-3 sm:p-4 rounded-lg overflow-x-auto text-xs sm:text-sm">
-                  <code>{optimalCode}</code>
-                </pre>
+                <CodeBlock code={optimalCode} />
               </CardContent>
             </Card>
           )}

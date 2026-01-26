@@ -113,34 +113,34 @@ ANSWER FORMAT (use these exact section markers):
 [1 paragraph with a concrete example, or write "N/A" if not applicable]
 
 ---BRUTE_FORCE_APPROACH---
-[For coding problems, provide step-by-step approach explanation. Otherwise write "N/A"]
+[CRITICAL: ONLY if the question explicitly asks you to WRITE CODE, IMPLEMENT, PROGRAM, or SOLVE AN ALGORITHM, then provide brute force approach. Questions like "what is", "explain", "describe", "tell me about" should get "N/A" even if the topic is technical. For actual coding requests, you MUST provide step-by-step brute force explanation. Otherwise write "N/A"]
 
 ---BRUTE_FORCE_CODE---
-[For coding problems, provide fully commented Python code. Otherwise write "N/A"]
+[CRITICAL: ONLY if the question asks to WRITE/IMPLEMENT CODE, provide fully commented Python code. Questions asking to "explain" or "what is" should get "N/A". For actual code requests, you MUST provide code. Otherwise write "N/A"]
 
 ---BRUTE_FORCE_TIME---
-[For coding problems, explain time complexity in detail. Otherwise write "N/A"]
+[ONLY for actual coding problems where you provided code above, format as: "O(n), where n is... This is because..." Otherwise write "N/A"]
 
 ---BRUTE_FORCE_SPACE---
-[For coding problems, explain space complexity in detail. Otherwise write "N/A"]
+[ONLY for actual coding problems where you provided code above, format as: "O(n), where n is... This is because..." Otherwise write "N/A"]
 
 ---BRUTE_FORCE_WHY---
-[For coding problems, explain why this approach works. Otherwise write "N/A"]
+[ONLY for actual coding problems where you provided code above, explain why approach works. Otherwise write "N/A"]
 
 ---OPTIMAL_APPROACH---
-[For coding problems, provide step-by-step optimal approach with key insights. Otherwise write "N/A"]
+[CRITICAL: ONLY if question asks to WRITE/IMPLEMENT CODE, provide optimal approach. Questions asking "what is", "explain", etc. should get "N/A". For code requests, you MUST provide optimal approach. Otherwise write "N/A"]
 
 ---OPTIMAL_CODE---
-[For coding problems, provide fully commented optimal Python code. Otherwise write "N/A"]
+[CRITICAL: ONLY if question asks to WRITE/IMPLEMENT CODE, provide fully commented optimal Python code. Otherwise write "N/A"]
 
 ---OPTIMAL_TIME---
-[For coding problems, explain optimal time complexity. Otherwise write "N/A"]
+[ONLY for actual coding problems where you provided code above, format as: "O(n), where n is... This is because..." Otherwise write "N/A"]
 
 ---OPTIMAL_SPACE---
-[For coding problems, explain optimal space complexity. Otherwise write "N/A"]
+[ONLY for actual coding problems where you provided code above, format as: "O(n), where n is... This is because..." Otherwise write "N/A"]
 
 ---OPTIMAL_WHY---
-[For coding problems, explain why this is better than brute force. Otherwise write "N/A"]`
+[ONLY for actual coding problems where you provided code above, explain why better than brute force. Otherwise write "N/A"]`
 
   try {
     console.log('Generating answer for question:', question)
