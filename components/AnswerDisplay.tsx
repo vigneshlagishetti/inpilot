@@ -1,30 +1,102 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckCircle2, Code, Lightbulb, BookOpen } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { CheckCircle2, Code, Lightbulb, BookOpen, Copy, Check, Clock, HardDrive, Zap, MessageCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 interface AnswerDisplayProps {
+  question: string
   directAnswer: string
   detailedExplanation: string
   example?: string
   bruteForceApproach?: string
+  bruteForceCode?: string
+  bruteForceTime?: string
+  bruteForceSpace?: string
+  bruteForceWhy?: string
   optimalApproach?: string
-  timeComplexity?: string
-  spaceComplexity?: string
+  optimalCode?: string
+  optimalTime?: string
+  optimalSpace?: string
+  optimalWhy?: string
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <Button
+      onClick={handleCopy}
+      size="sm"
+      variant="outline"
+      className="gap-2"
+    >
+      {copied ? (
+        <>
+          <Check className="w-4 h-4" />
+          Copied!
+        </>
+      ) : (
+        <>
+          <Copy className="w-4 h-4" />
+          Copy Code
+        </>
+      )}
+    </Button>
+  )
 }
 
 export function AnswerDisplay({
+  question,
   directAnswer,
   detailedExplanation,
   example,
   bruteForceApproach,
+  bruteForceCode,
+  bruteForceTime,
+  bruteForceSpace,
+  bruteForceWhy,
   optimalApproach,
-  timeComplexity,
-  spaceComplexity,
+  optimalCode,
+  optimalTime,
+  optimalSpace,
+  optimalWhy,
 }: AnswerDisplayProps) {
+
+  const hasBruteForce = bruteForceApproach || bruteForceCode
+  const hasOptimal = optimalApproach || optimalCode
+
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Question */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card className="border-l-4 border-l-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800">
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-indigo-700 dark:text-indigo-300">
+              <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+              Question
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 pt-0">
+            <p className="text-sm sm:text-lg font-medium text-gray-900 dark:text-gray-50">
+              {question}
+            </p>
+          </CardContent>
+        </Card>
+      </motion.div>
+
       {/* Direct Answer */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -39,7 +111,7 @@ export function AnswerDisplay({
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0">
-            <p className="text-sm sm:text-lg font-medium text-gray-900 dark:text-gray-50">{directAnswer}</p>
+            <p className="text-sm sm:text-lg font-medium text-gray-900 dark:text-gray-50 whitespace-pre-wrap">{directAnswer}</p>
           </CardContent>
         </Card>
       </motion.div>
@@ -88,8 +160,8 @@ export function AnswerDisplay({
         </motion.div>
       )}
 
-      {/* Code Approaches */}
-      {(bruteForceApproach || optimalApproach) && (
+      {/* Brute Force Approach */}
+      {hasBruteForce && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -97,55 +169,157 @@ export function AnswerDisplay({
           className="space-y-4"
         >
           <h3 className="text-lg sm:text-xl font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-50">
-            <Code className="w-4 h-4 sm:w-5 sm:h-5" />
-            Code Solutions
+            <Code className="w-5 h-5" />
+            Brute Force Approach
           </h3>
 
+          {/* Approach Explanation */}
           {bruteForceApproach && (
-            <Card className="border-l-4 border-l-orange-500 border-orange-200 dark:border-orange-800 bg-white/50 dark:bg-gray-900/50">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="text-base sm:text-lg text-orange-700 dark:text-orange-300">Brute Force Approach</CardTitle>
+            <Card className="border-l-4 border-l-orange-500 border-orange-200 dark:border-orange-800 bg-orange-50/30 dark:bg-orange-950/20">
+              <CardHeader className="p-4">
+                <CardTitle className="text-sm sm:text-base text-orange-700 dark:text-orange-300">Approach</CardTitle>
               </CardHeader>
-              <CardContent className="p-4 sm:p-6 pt-0">
-                <pre className="bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-x-auto text-xs sm:text-sm">
-                  <code>{bruteForceApproach}</code>
+              <CardContent className="p-4 pt-0">
+                <p className="text-sm text-gray-900 dark:text-gray-50 whitespace-pre-wrap">{bruteForceApproach}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Code */}
+          {bruteForceCode && (
+            <Card className="border-l-4 border-l-orange-500 border-orange-200 dark:border-orange-800">
+              <CardHeader className="p-4 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm sm:text-base text-orange-700 dark:text-orange-300">Code</CardTitle>
+                <CopyButton text={bruteForceCode} />
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-3 sm:p-4 rounded-lg overflow-x-auto text-xs sm:text-sm">
+                  <code>{bruteForceCode}</code>
                 </pre>
               </CardContent>
             </Card>
           )}
 
+          {/* Time & Space Complexity */}
+          {(bruteForceTime || bruteForceSpace) && (
+            <Card className="border-l-4 border-l-orange-500 border-orange-200 dark:border-orange-800 bg-orange-50/30 dark:bg-orange-950/20">
+              <CardHeader className="p-4">
+                <CardTitle className="text-sm sm:text-base text-orange-700 dark:text-orange-300">Complexity Analysis</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0 space-y-3">
+                {bruteForceTime && (
+                  <div className="flex items-start gap-2">
+                    <Clock className="w-4 h-4 mt-0.5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Time Complexity:</p>
+                      <p className="text-sm text-gray-900 dark:text-gray-50">{bruteForceTime}</p>
+                    </div>
+                  </div>
+                )}
+                {bruteForceSpace && (
+                  <div className="flex items-start gap-2">
+                    <HardDrive className="w-4 h-4 mt-0.5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Space Complexity:</p>
+                      <p className="text-sm text-gray-900 dark:text-gray-50">{bruteForceSpace}</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Why it works */}
+          {bruteForceWhy && (
+            <Card className="border-l-4 border-l-orange-500 border-orange-200 dark:border-orange-800 bg-orange-50/30 dark:bg-orange-950/20">
+              <CardHeader className="p-4">
+                <CardTitle className="text-sm sm:text-base text-orange-700 dark:text-orange-300">Why This Works</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <p className="text-sm text-gray-900 dark:text-gray-50 whitespace-pre-wrap">{bruteForceWhy}</p>
+              </CardContent>
+            </Card>
+          )}
+        </motion.div>
+      )}
+
+      {/* Optimal Approach */}
+      {hasOptimal && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="space-y-4"
+        >
+          <h3 className="text-lg sm:text-xl font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-50">
+            <Zap className="w-5 h-5" />
+            Optimal Approach
+          </h3>
+
+          {/* Approach Explanation */}
           {optimalApproach && (
-            <Card className="border-l-4 border-l-emerald-500 border-emerald-200 dark:border-emerald-800 bg-white/50 dark:bg-gray-900/50">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="text-base sm:text-lg text-emerald-700 dark:text-emerald-300">Optimal Approach</CardTitle>
+            <Card className="border-l-4 border-l-emerald-500 border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20">
+              <CardHeader className="p-4">
+                <CardTitle className="text-sm sm:text-base text-emerald-700 dark:text-emerald-300">Approach</CardTitle>
               </CardHeader>
-              <CardContent className="p-4 sm:p-6 pt-0">
-                <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 dark:text-gray-50 p-3 sm:p-4 rounded-lg overflow-x-auto text-xs sm:text-sm border border-gray-700">
-                  <code>{optimalApproach}</code>
+              <CardContent className="p-4 pt-0">
+                <p className="text-sm text-gray-900 dark:text-gray-50 whitespace-pre-wrap">{optimalApproach}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Code */}
+          {optimalCode && (
+            <Card className="border-l-4 border-l-emerald-500 border-emerald-200 dark:border-emerald-800">
+              <CardHeader className="p-4 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm sm:text-base text-emerald-700 dark:text-emerald-300">Code</CardTitle>
+                <CopyButton text={optimalCode} />
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <pre className="bg-gray-900 dark:bg-gray-950 text-gray-100 p-3 sm:p-4 rounded-lg overflow-x-auto text-xs sm:text-sm">
+                  <code>{optimalCode}</code>
                 </pre>
               </CardContent>
             </Card>
           )}
 
-          {/* Complexity Analysis */}
-          {(timeComplexity || spaceComplexity) && (
-            <Card className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle className="text-sm sm:text-base text-gray-900 dark:text-gray-50">Complexity Analysis</CardTitle>
+          {/* Time & Space Complexity */}
+          {(optimalTime || optimalSpace) && (
+            <Card className="border-l-4 border-l-emerald-500 border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20">
+              <CardHeader className="p-4">
+                <CardTitle className="text-sm sm:text-base text-emerald-700 dark:text-emerald-300">Complexity Analysis</CardTitle>
               </CardHeader>
-              <CardContent className="p-4 sm:p-6 pt-0 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {timeComplexity && (
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">Time Complexity</p>
-                    <p className="text-base sm:text-lg font-mono text-gray-900 dark:text-gray-50">{timeComplexity}</p>
+              <CardContent className="p-4 pt-0 space-y-3">
+                {optimalTime && (
+                  <div className="flex items-start gap-2">
+                    <Clock className="w-4 h-4 mt-0.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Time Complexity:</p>
+                      <p className="text-sm text-gray-900 dark:text-gray-50">{optimalTime}</p>
+                    </div>
                   </div>
                 )}
-                {spaceComplexity && (
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">Space Complexity</p>
-                    <p className="text-base sm:text-lg font-mono text-gray-900 dark:text-gray-50">{spaceComplexity}</p>
+                {optimalSpace && (
+                  <div className="flex items-start gap-2">
+                    <HardDrive className="w-4 h-4 mt-0.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Space Complexity:</p>
+                      <p className="text-sm text-gray-900 dark:text-gray-50">{optimalSpace}</p>
+                    </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Why it's better */}
+          {optimalWhy && (
+            <Card className="border-l-4 border-l-emerald-500 border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20">
+              <CardHeader className="p-4">
+                <CardTitle className="text-sm sm:text-base text-emerald-700 dark:text-emerald-300">Why This Is Better</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <p className="text-sm text-gray-900 dark:text-gray-50 whitespace-pre-wrap">{optimalWhy}</p>
               </CardContent>
             </Card>
           )}

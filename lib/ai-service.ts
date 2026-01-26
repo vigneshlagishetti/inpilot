@@ -9,14 +9,22 @@ export interface AnswerResponse {
   directAnswer: string
   detailedExplanation: string
   example?: string
+  // Brute Force sections
   bruteForceApproach?: string
+  bruteForceCode?: string
+  bruteForceTime?: string
+  bruteForceSpace?: string
+  bruteForceWhy?: string
+  // Optimal sections
   optimalApproach?: string
-  timeComplexity?: string
-  spaceComplexity?: string
+  optimalCode?: string
+  optimalTime?: string
+  optimalSpace?: string
+  optimalWhy?: string
 }
 
 export async function generateAnswer(
-  question: string, 
+  question: string,
   resumeContent?: string,
   jobRole?: string,
   customInstructions?: string
@@ -27,14 +35,14 @@ export async function generateAnswer(
   console.log('Resume length:', resumeContent?.length || 0)
   console.log('Job role:', jobRole || 'Not specified')
   console.log('Custom instructions:', customInstructions || 'None')
-  
+
   let systemPrompt = ''
   let extractedName = ''
 
   // Extract name from resume if provided
   if (resumeContent) {
     const lines = resumeContent.split('\n')
-    
+
     // Look for all-caps name (LAGISHETTI VIGNESH format)
     for (const line of lines) {
       const trimmedLine = line.trim()
@@ -43,7 +51,7 @@ export async function generateAnswer(
         break
       }
     }
-    
+
     // If not found, try other patterns
     if (!extractedName) {
       const nameMatch = resumeContent.match(/(?:name|Name)[:\s]*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/)
@@ -73,14 +81,11 @@ CRITICAL INSTRUCTIONS:
 - For technical questions: Use your skills/projects from the resume and relate them to ${jobRole || 'the role'}
 - Be confident and conversational as if speaking to an interviewer${jobRole ? ` for a ${jobRole} position` : ''}
 
-SPEAKING STYLE - VERY IMPORTANT:
-- Talk like a NORMAL person, not overly professional
-- Use simple, everyday English that anyone can understand
-- Be conversational and friendly, like explaining to a friend
-- Use phrases like: "So basically...", "What I did was...", "The cool thing about this is...", "I really enjoyed..."
-- Avoid corporate jargon and fancy vocabulary
-- Keep it real and relatable - sound like someone with experience who knows their stuff, but not someone reading from a textbook
-- Be natural, use contractions (I'm, it's, that's), and speak like you're having a normal conversation
+SPEAKING STYLE:
+- Talk naturally, like a normal person in an interview
+- Use simple, clear English
+- Be conversational and confident
+- Avoid jargon - speak like you're explaining to a colleague
 
 Answer this interview question: "${question}"`
   } else {
@@ -94,44 +99,59 @@ Guidelines:
 
   systemPrompt += `
 
-ANSWER LENGTH - KEEP IT CONCISE:
-- Direct Answer: 2-3 sentences (quick, natural intro)
-- Detailed Explanation: 2-3 paragraphs with key details
-- Example: 1 paragraph with a specific scenario
-- Keep it comprehensive but brief - quality over quantity
+CRITICAL: ALWAYS provide a direct answer first! Never skip this section.
 
-Format EXACTLY as:
+ANSWER FORMAT (use these exact section markers):
+
 ---DIRECT_ANSWER---
-[Quick, conversational opening - 2-3 sentences]
+[REQUIRED: 3-4 lines giving a comprehensive, direct, conversational opening. This MUST be filled for ANY question type. Start answering immediately.]
 
 ---DETAILED_EXPLANATION---
-[2-3 focused paragraphs covering your experience, skills, and how they relate to the question]
+[2-3 paragraphs explaining your understanding and approach in detail]
 
 ---EXAMPLE---
-[1 paragraph with a specific example - situation, action, result]
+[1 paragraph with a concrete example, or write "N/A" if not applicable]
 
----BRUTE_FORCE---
-[For coding: Simple approach with code, otherwise "N/A"]
+---BRUTE_FORCE_APPROACH---
+[For coding problems, provide step-by-step approach explanation. Otherwise write "N/A"]
+
+---BRUTE_FORCE_CODE---
+[For coding problems, provide fully commented Python code. Otherwise write "N/A"]
+
+---BRUTE_FORCE_TIME---
+[For coding problems, explain time complexity in detail. Otherwise write "N/A"]
+
+---BRUTE_FORCE_SPACE---
+[For coding problems, explain space complexity in detail. Otherwise write "N/A"]
+
+---BRUTE_FORCE_WHY---
+[For coding problems, explain why this approach works. Otherwise write "N/A"]
 
 ---OPTIMAL_APPROACH---
-[For coding: Better approach with code, otherwise "N/A"]
+[For coding problems, provide step-by-step optimal approach with key insights. Otherwise write "N/A"]
 
----TIME_COMPLEXITY---
-[For coding: Quick explanation, otherwise "N/A"]
+---OPTIMAL_CODE---
+[For coding problems, provide fully commented optimal Python code. Otherwise write "N/A"]
 
----SPACE_COMPLEXITY---
-[For coding: Quick explanation, otherwise "N/A"]`
+---OPTIMAL_TIME---
+[For coding problems, explain optimal time complexity. Otherwise write "N/A"]
+
+---OPTIMAL_SPACE---
+[For coding problems, explain optimal space complexity. Otherwise write "N/A"]
+
+---OPTIMAL_WHY---
+[For coding problems, explain why this is better than brute force. Otherwise write "N/A"]`
 
   try {
     console.log('Generating answer for question:', question)
     const completion = await openai.chat.completions.create({
-      model: 'llama-3.3-70b-versatile', // Using latest supported model
+      model: 'llama-3.1-8b-instant', // Fastest model for instant responses
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: question },
       ],
-      temperature: 0.3, // Lower for faster, more direct responses
-      max_tokens: 1200, // Significantly reduced for speed
+      temperature: 0.2, // Lower for faster, focused responses
+      max_tokens: 2000, // Increased for detailed coding responses
     })
 
     console.log('Answer generated successfully')
@@ -149,20 +169,32 @@ function parseResponse(response: string): AnswerResponse {
     directAnswer: extractSection(response, 'DIRECT_ANSWER'),
     detailedExplanation: extractSection(response, 'DETAILED_EXPLANATION'),
     example: extractSection(response, 'EXAMPLE'),
-    bruteForceApproach: extractSection(response, 'BRUTE_FORCE'),
+    bruteForceApproach: extractSection(response, 'BRUTE_FORCE_APPROACH'),
+    bruteForceCode: extractSection(response, 'BRUTE_FORCE_CODE'),
+    bruteForceTime: extractSection(response, 'BRUTE_FORCE_TIME'),
+    bruteForceSpace: extractSection(response, 'BRUTE_FORCE_SPACE'),
+    bruteForceWhy: extractSection(response, 'BRUTE_FORCE_WHY'),
     optimalApproach: extractSection(response, 'OPTIMAL_APPROACH'),
-    timeComplexity: extractSection(response, 'TIME_COMPLEXITY'),
-    spaceComplexity: extractSection(response, 'SPACE_COMPLEXITY'),
+    optimalCode: extractSection(response, 'OPTIMAL_CODE'),
+    optimalTime: extractSection(response, 'OPTIMAL_TIME'),
+    optimalSpace: extractSection(response, 'OPTIMAL_SPACE'),
+    optimalWhy: extractSection(response, 'OPTIMAL_WHY'),
   }
 
   return {
-    directAnswer: sections.directAnswer || 'Unable to generate direct answer',
-    detailedExplanation: sections.detailedExplanation || 'Unable to generate detailed explanation',
-    example: sections.example !== 'N/A' ? sections.example : undefined,
-    bruteForceApproach: sections.bruteForceApproach !== 'N/A' ? sections.bruteForceApproach : undefined,
-    optimalApproach: sections.optimalApproach !== 'N/A' ? sections.optimalApproach : undefined,
-    timeComplexity: sections.timeComplexity !== 'N/A' ? sections.timeComplexity : undefined,
-    spaceComplexity: sections.spaceComplexity !== 'N/A' ? sections.spaceComplexity : undefined,
+    directAnswer: sections.directAnswer || 'Please ask your question again',
+    detailedExplanation: sections.detailedExplanation || 'No detailed explanation available',
+    example: sections.example !== 'N/A' && sections.example ? sections.example : undefined,
+    bruteForceApproach: sections.bruteForceApproach !== 'N/A' && sections.bruteForceApproach ? sections.bruteForceApproach : undefined,
+    bruteForceCode: sections.bruteForceCode !== 'N/A' && sections.bruteForceCode ? sections.bruteForceCode : undefined,
+    bruteForceTime: sections.bruteForceTime !== 'N/A' && sections.bruteForceTime ? sections.bruteForceTime : undefined,
+    bruteForceSpace: sections.bruteForceSpace !== 'N/A' && sections.bruteForceSpace ? sections.bruteForceSpace : undefined,
+    bruteForceWhy: sections.bruteForceWhy !== 'N/A' && sections.bruteForceWhy ? sections.bruteForceWhy : undefined,
+    optimalApproach: sections.optimalApproach !== 'N/A' && sections.optimalApproach ? sections.optimalApproach : undefined,
+    optimalCode: sections.optimalCode !== 'N/A' && sections.optimalCode ? sections.optimalCode : undefined,
+    optimalTime: sections.optimalTime !== 'N/A' && sections.optimalTime ? sections.optimalTime : undefined,
+    optimalSpace: sections.optimalSpace !== 'N/A' && sections.optimalSpace ? sections.optimalSpace : undefined,
+    optimalWhy: sections.optimalWhy !== 'N/A' && sections.optimalWhy ? sections.optimalWhy : undefined,
   }
 }
 

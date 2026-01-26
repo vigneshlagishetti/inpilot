@@ -13,43 +13,46 @@ interface VoiceRecorderProps {
 }
 
 export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscriptionComplete, onRecordingStateChange, autoStart = false }: VoiceRecorderProps, ref) {
-    // Expose startRecording to parent via ref
-    useImperativeHandle(ref, () => ({
-      startRecording,
-      stopRecording
-    }))
-  const [isRecording, setIsRecording] = useState(false)
-  const [transcript, setTranscript] = useState('')
-  const [interimTranscript, setInterimTranscript] = useState('')
-  const [isListening, setIsListening] = useState(false)
-  const [autoMode, setAutoMode] = useState(autoStart)
-
-    // When autoMode changes, start or stop recording automatically
-    useEffect(() => {
-      if (autoMode && !isRecording) {
-        startRecording();
-      } else if (!autoMode && isRecording) {
-        stopRecording();
-      }
-    }, [autoMode]);
-  const [isPaused, setIsPaused] = useState(false) // Paused after generating answer
+  // All hooks must be declared here, at the top level of the component:
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [autoMode, setAutoMode] = useState(autoStart);
+  const [isPaused, setIsPaused] = useState(false);
   const [buttonLocked, setButtonLocked] = useState(false);
   const [recognitionActive, setRecognitionActive] = useState(false);
-  const recognitionRef = useRef<any>(null)
-  const lastButtonPressRef = useRef<number>(0)
-  const recognitionRestartingRef = useRef(false)
-  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const isRecordingRef = useRef(false)
-  const transcriptRef = useRef('')
-  const autoModeRef = useRef(autoStart)
-  const isPausedRef = useRef(false)
-  const isInitializedRef = useRef(false)
-  const isMobile = useRef(false)
-  const lastProcessedResultRef = useRef('')
-  const resultIndexRef = useRef(0)
-  const isProcessingRef = useRef(false)
+  const recognitionRef = useRef<any>(null);
+  const lastButtonPressRef = useRef<number>(0);
+  const recognitionRestartingRef = useRef(false);
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isRecordingRef = useRef(false);
+  const transcriptRef = useRef('');
+  const autoModeRef = useRef(autoStart);
+  const isPausedRef = useRef(false);
+  const isInitializedRef = useRef(false);
+  const isMobile = useRef(false);
+  const lastProcessedResultRef = useRef('');
+  const resultIndexRef = useRef(0);
+  const isProcessingRef = useRef(false);
   const phraseSetRef = useRef<Set<string>>(new Set());
+  const hasSpeechStartedRef = useRef(false);
   const { toast } = useToast()
+
+  // Expose startRecording to parent via ref
+  useImperativeHandle(ref, () => ({
+    startRecording,
+    stopRecording
+  }))
+
+  // When autoMode changes, start or stop recording automatically
+  useEffect(() => {
+    if (autoMode && !isRecording) {
+      startRecording();
+    } else if (!autoMode && isRecording) {
+      stopRecording();
+    }
+  }, [autoMode]);
 
   useEffect(() => {
     isRecordingRef.current = isRecording;
@@ -139,6 +142,10 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           };
           recognition.onspeechstart = () => {
             console.log('Speech detected - user is speaking');
+            // Mark that speech has started (timer will be managed by onresult)
+            hasSpeechStartedRef.current = true;
+            // Clear any existing timer from before speech started
+            if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
           };
           recognition.onspeechend = () => {
             console.log('Speech ended - user stopped speaking');
@@ -155,12 +162,36 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
             try {
               let currentInterim = '';
               let newFinalText = '';
+              let gotFinal = false;
               for (let i = resultIndexRef.current; i < event.results.length; i++) {
                 if (i < resultIndexRef.current) continue;
                 let transcriptPiece = event.results[i][0].transcript.trim();
                 transcriptPiece = transcriptPiece.replace(/\b(\w+)( \1\b)+/gi, '$1');
                 const lastTranscript = transcriptRef.current;
+                // Always reset global silence timer on any result
+                if (hasSpeechStartedRef.current) {
+                  if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+                  silenceTimerRef.current = setTimeout(() => {
+                    if (isRecordingRef.current) {
+                      const answerText = transcriptRef.current.trim() || interimTranscript.trim() || currentInterim.trim() || transcriptPiece;
+                      transcriptRef.current = answerText;
+                      setTranscript(answerText);
+                      setInterimTranscript('');
+                      if (answerText) {
+                        onTranscriptionComplete(answerText);
+                        toast({
+                          title: 'Answer Callback Triggered',
+                          description: `Transcript sent: ${answerText}`,
+                          variant: 'default',
+                        });
+                      }
+                      stopRecording();
+                      setIsPaused(true);
+                    }
+                  }, 1500);
+                }
                 if (event.results[i].isFinal) {
+                  gotFinal = true;
                   if (
                     phraseSetRef.current.has(transcriptPiece) ||
                     !transcriptPiece ||
@@ -182,6 +213,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                 } else {
                   if (i === event.results.length - 1) {
                     setInterimTranscript(transcriptPiece);
+                    currentInterim = transcriptPiece;
                     console.log('Updated interim:', transcriptPiece);
                   }
                 }
@@ -211,9 +243,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                   setInterimTranscript('');
                 }
               }
-              if (silenceTimerRef.current) {
-                clearTimeout(silenceTimerRef.current);
-              }
+              // Timer is already managed at the top of this handler (line ~173)
+              // No need to clear or reset it again here
             } catch (err) {
               console.error('Error in recognition.onresult:', err);
             } finally {
@@ -290,18 +321,20 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
     resultIndexRef.current = 0
     isProcessingRef.current = false
     phraseSetRef.current = new Set();
-    
+    hasSpeechStartedRef.current = false; // Reset speech detection flag
+
     // Clear any existing silence timer
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current)
       silenceTimerRef.current = null
     }
-    
+    // Do NOT start silence timer here - it will start when speech is detected
+
     console.log('State reset complete, starting fresh recording')
-    
+
     setIsRecording(true)
     onRecordingStateChange(true)
-    
+
     if (recognitionRef.current) {
       try {
         recognitionRef.current.start()
@@ -405,29 +438,29 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   // Detect if text is a question
   const detectQuestion = (text: string): boolean => {
     const lowerText = text.toLowerCase().trim()
-    
+
     // Remove casual speech prefixes (so, okay, well, now, alright, etc.)
     const cleanedText = lowerText
       .replace(/^(so|okay|well|now|alright|right|um|uh|let me see|hmm)\s+/i, '')
       .trim()
-    
+
     // Check if ends with question mark
     if (cleanedText.endsWith('?')) return true
-    
+
     // Self-introduction patterns (always questions in interviews)
     const introPatterns = [
       'introduce yourself', 'introduce your self', 'tell me about yourself',
       'tell me about you', 'tell about yourself', 'talk about yourself',
       'describe yourself', 'who are you', "what's your name", 'what is your name'
     ]
-    
+
     for (const pattern of introPatterns) {
       if (cleanedText.includes(pattern)) {
         console.log('Detected introduction request:', pattern)
         return true
       }
     }
-    
+
     // Question word patterns
     const questionWords = [
       'what', 'when', 'where', 'who', 'whom', 'whose', 'which', 'why', 'how',
@@ -437,13 +470,13 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
       'tell me', 'explain', 'describe', 'define', 'compare', 'walk me through',
       'walk through', 'talk about'
     ]
-    
+
     // Design/implementation patterns (common in interviews)
     const designPatterns = [
       'design', 'implement', 'build', 'create', 'develop',
       'write a', 'code a', 'solve', 'find', 'calculate'
     ]
-    
+
     // Check if starts with question word
     for (const word of questionWords) {
       if (cleanedText.startsWith(word + ' ') || cleanedText.startsWith(word + "'")) {
@@ -451,7 +484,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
         return true
       }
     }
-    
+
     // Check if starts with design/implementation patterns
     for (const word of designPatterns) {
       if (cleanedText.startsWith(word + ' ')) {
@@ -459,29 +492,29 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
         return true
       }
     }
-    
+
     // Check for question patterns anywhere
-    if (cleanedText.includes('can you tell') || 
-        cleanedText.includes('could you explain') ||
-        cleanedText.includes('what is') ||
-        cleanedText.includes('what are') ||
-        cleanedText.includes('what have') ||
-        cleanedText.includes('how do') ||
-        cleanedText.includes('how can') ||
-        cleanedText.includes('how to') ||
-        cleanedText.includes('why do') ||
-        cleanedText.includes('design a') ||
-        cleanedText.includes('design the') ||
-        cleanedText.includes('implement a') ||
-        cleanedText.includes('implement the') ||
-        cleanedText.includes('build a') ||
-        cleanedText.includes('build the') ||
-        cleanedText.includes('using system design') ||
-        cleanedText.includes('system design')) {
+    if (cleanedText.includes('can you tell') ||
+      cleanedText.includes('could you explain') ||
+      cleanedText.includes('what is') ||
+      cleanedText.includes('what are') ||
+      cleanedText.includes('what have') ||
+      cleanedText.includes('how do') ||
+      cleanedText.includes('how can') ||
+      cleanedText.includes('how to') ||
+      cleanedText.includes('why do') ||
+      cleanedText.includes('design a') ||
+      cleanedText.includes('design the') ||
+      cleanedText.includes('implement a') ||
+      cleanedText.includes('implement the') ||
+      cleanedText.includes('build a') ||
+      cleanedText.includes('build the') ||
+      cleanedText.includes('using system design') ||
+      cleanedText.includes('system design')) {
       console.log('Detected question pattern in text')
       return true
     }
-    
+
     // Check if it's a common interview request format
     // e.g., "design whatsapp", "implement LRU cache", "solve two sum"
     const words = cleanedText.split(' ')
@@ -489,7 +522,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
       console.log('Detected short design command')
       return true
     }
-    
+
     console.log('Not detected as question')
     return false
   }
@@ -517,19 +550,33 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   return (
     <div className="space-y-4">
       {/* Manual/Continuous Mode Toggle */}
-      <div className="flex items-center justify-center space-x-3 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border border-white/20 dark:border-white/10 hover:bg-white/70 dark:hover:bg-gray-800/70 transition-all duration-300 group">
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Continuous Mode</span>
+      <div className="flex items-center justify-center gap-4 p-4 rounded-xl bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-white/30 dark:border-white/20 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-300 shadow-sm">
+        <span className={`text-sm sm:text-base font-semibold transition-colors duration-200 ${!autoMode ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+          }`}>
+          Manual
+        </span>
+
         <button
           type="button"
-          aria-pressed={autoMode}
           onClick={() => setAutoMode((prev) => !prev)}
-          className={`ml-2 w-10 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${autoMode ? 'bg-green-500' : 'bg-gray-300'}`}
+          className={`relative inline-flex h-8 w-14 sm:h-9 sm:w-16 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-inner ${autoMode
+            ? 'bg-gradient-to-r from-green-500 to-green-600 focus:ring-green-500'
+            : 'bg-gray-200/80 dark:bg-gray-600/50 focus:ring-gray-400'
+            }`}
+          aria-pressed={autoMode}
         >
           <span
-            className={`inline-block w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-300 ${autoMode ? 'translate-x-4' : ''}`}
+            className={`inline-block h-6 w-6 sm:h-7 sm:w-7 transform rounded-full bg-white shadow-md border-2 transition-all duration-300 ease-in-out ${autoMode
+                ? 'translate-x-7 sm:translate-x-8 border-green-400'
+                : 'translate-x-1 border-gray-300 dark:border-gray-500'
+              }`}
           />
         </button>
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{autoMode ? 'On' : 'Off'}</span>
+
+        <span className={`text-sm sm:text-base font-semibold transition-colors duration-200 ${autoMode ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+          }`}>
+          {isMobile.current ? 'Auto' : 'Auto Mode'}
+        </span>
       </div>
 
       {/* Resume Button (only show when paused in auto mode) */}
@@ -556,11 +603,10 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                 <div className="absolute inset-0 rounded-full bg-red-500/20 animate-ping"></div>
               )}
               {/* Glow effect on hover */}
-              <div className={`absolute inset-0 rounded-full transition-all duration-300 ${
-                isRecording 
-                  ? 'bg-red-500/30 blur-xl' 
-                  : 'bg-blue-500/0 group-hover:bg-blue-500/30 blur-xl'
-              }`}></div>
+              <div className={`absolute inset-0 rounded-full transition-all duration-300 ${isRecording
+                ? 'bg-red-500/30 blur-xl'
+                : 'bg-blue-500/0 group-hover:bg-blue-500/30 blur-xl'
+                }`}></div>
               <Button
                 type="button"
                 size="lg"
@@ -583,11 +629,10 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                   }
                 }}
                 onClick={(e) => { e.preventDefault(); }}
-                className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full transition-all duration-300 select-none ${
-                  isRecording 
-                    ? 'recording-pulse scale-110 shadow-2xl' 
-                    : 'hover:scale-110 hover:shadow-xl bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
-                } ${!isRecording ? 'group-hover:animate-pulse' : ''}`}
+                className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full transition-all duration-300 select-none ${isRecording
+                  ? 'recording-pulse scale-110 shadow-2xl'
+                  : 'hover:scale-110 hover:shadow-xl bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                  } ${!isRecording ? 'group-hover:animate-pulse' : ''}`}
                 disabled={buttonLocked || recognitionActive || (autoMode && isRecording) || isPaused}
                 style={{ touchAction: 'manipulation' }}
               >
@@ -602,9 +647,9 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
               <p className="text-xs sm:text-sm font-medium">
                 {isPaused
                   ? 'Paused - Read & explain your answer'
-                  : autoMode 
-                    ? (isRecording ? 'Listening... (Auto mode)' : 'Processing...') 
-                    : (isRecording ? 'Recording... (Stops after 1s silence)' : 'Click to start recording')
+                  : autoMode
+                    ? (isRecording ? 'Listening... (Auto mode)' : 'Processing...')
+                    : (isRecording ? 'Recording... (Stops after 1.5s silence)' : 'Click to start recording')
                 }
               </p>
               {isListening && !isPaused && (
