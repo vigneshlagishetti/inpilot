@@ -95,11 +95,12 @@ export default function DashboardPage() {
     loadReviews()
   }, [])
 
-  // Load projects and history from Supabase when user is available
+  // Load projects, history, and resume from Supabase when user is available
   useEffect(() => {
     if (user?.id) {
       loadProjects()
       loadHistory()
+      loadResumeFromDB()
     }
   }, [user?.id])
 
@@ -127,6 +128,74 @@ export default function DashboardPage() {
       toast({
         title: 'Error Loading Projects',
         description: 'Could not fetch your saved projects.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const loadResumeFromDB = async () => {
+    try {
+      if (!user?.id) return
+
+      const { data, error } = await supabase
+        .from('user_resumes')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (error) {
+        // No resume found is okay, just skip
+        if (error.code !== 'PGRST116') {
+          console.error('Error loading resume:', error)
+        }
+        return
+      }
+
+      if (data) {
+        setResumeContent(data.resume_content)
+        setResumeFileName(data.file_name)
+        setJobRole(data.job_role || '')
+        setCustomInstructions(data.custom_instructions || '')
+
+        // Also save to localStorage as backup
+        localStorage.setItem('interviewAssistant_resume', data.resume_content)
+        localStorage.setItem('interviewAssistant_fileName', data.file_name)
+        localStorage.setItem('interviewAssistant_jobRole', data.job_role || '')
+        localStorage.setItem('interviewAssistant_instructions', data.custom_instructions || '')
+      }
+    } catch (error) {
+      console.error('Error loading resume from DB:', error)
+    }
+  }
+
+  const saveResumeToDB = async (content: string, fileName: string, role: string, instructions: string) => {
+    try {
+      if (!user?.id) return
+
+      const { error } = await supabase
+        .from('user_resumes')
+        .upsert({
+          user_id: user.id,
+          resume_content: content,
+          file_name: fileName,
+          job_role: role,
+          custom_instructions: instructions,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        })
+
+      if (error) {
+        console.error('Error saving resume to DB:', error)
+        throw error
+      }
+
+      console.log('Resume saved to database successfully')
+    } catch (error) {
+      console.error('Error in saveResumeToDB:', error)
+      toast({
+        title: 'Warning',
+        description: 'Resume saved locally but failed to sync to cloud.',
         variant: 'destructive',
       })
     }
@@ -316,17 +385,24 @@ export default function DashboardPage() {
     localStorage.setItem('interviewAssistant_resume', content)
     localStorage.setItem('interviewAssistant_fileName', fileName)
 
+    // Save to database for permanent storage
+    saveResumeToDB(content, fileName, jobRole, customInstructions)
+
     console.log('State updated - resumeContent length:', content.length)
   }
 
   const handleJobRoleChange = (role: string) => {
     setJobRole(role)
     localStorage.setItem('interviewAssistant_jobRole', role)
+    // Save to database
+    saveResumeToDB(resumeContent, resumeFileName, role, customInstructions)
   }
 
   const handleCustomInstructionsChange = (instructions: string) => {
     setCustomInstructions(instructions)
     localStorage.setItem('interviewAssistant_instructions', instructions)
+    // Save to database
+    saveResumeToDB(resumeContent, resumeFileName, jobRole, instructions)
   }
 
   const handleAddProject = async (name: string, content: string) => {
@@ -423,7 +499,7 @@ export default function DashboardPage() {
     }
   }
 
-  const handleClearAllSettings = () => {
+  const handleClearAllSettings = async () => {
     // Clear state
     setResumeContent('')
     setResumeFileName('')
@@ -436,6 +512,19 @@ export default function DashboardPage() {
     localStorage.removeItem('interviewAssistant_fileName')
     localStorage.removeItem('interviewAssistant_jobRole')
     localStorage.removeItem('interviewAssistant_instructions')
+
+    // Clear from database
+    if (user?.id) {
+      try {
+        await supabase
+          .from('user_resumes')
+          .delete()
+          .eq('user_id', user.id)
+        console.log('Resume deleted from database')
+      } catch (error) {
+        console.error('Error deleting resume from DB:', error)
+      }
+    }
 
     toast({
       title: 'Settings Cleared',

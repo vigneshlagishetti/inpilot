@@ -48,6 +48,7 @@ export function ResumeUploader({
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null)
   const [uploadMethod, setUploadMethod] = useState<'file' | 'paste'>('file')
   const [pastedText, setPastedText] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
 
   const { toast } = useToast()
 
@@ -106,6 +107,12 @@ export function ResumeUploader({
       reader.readAsText(file)
     } else {
       // For PDF/DOCX, we'll need to send to server
+      setIsUploading(true)
+      toast({
+        title: 'Processing File',
+        description: 'Extracting text from your resume... This may take a moment.',
+      })
+
       const formData = new FormData()
       formData.append('file', file)
 
@@ -134,6 +141,8 @@ export function ResumeUploader({
           description: 'Could not process the file. Please try a TXT file instead.',
           variant: 'destructive',
         })
+      } finally {
+        setIsUploading(false)
       }
     }
   }
@@ -278,14 +287,25 @@ export function ResumeUploader({
                       accept=".txt,.pdf,.doc,.docx"
                       onChange={handleFileUpload}
                       className="hidden"
+                      disabled={isUploading}
                     />
                     <label
                       htmlFor="resume-upload"
-                      className="cursor-pointer flex flex-col items-center space-y-2"
+                      className={`flex flex-col items-center space-y-2 ${isUploading ? 'cursor-wait opacity-50' : 'cursor-pointer'}`}
                     >
-                      <Upload className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Upload Resume</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">TXT, PDF, DOC, or DOCX</p>
+                      {isUploading ? (
+                        <>
+                          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Processing...</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Extracting text from PDF</p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Upload Resume</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">TXT, PDF, DOC, or DOCX</p>
+                        </>
+                      )}
                     </label>
                   </div>
                 )}
