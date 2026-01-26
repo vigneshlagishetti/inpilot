@@ -8,6 +8,58 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export type Database = {
   public: {
     Tables: {
+      conversations: {
+        Row: {
+          id: string
+          user_id: string
+          user_email: string
+          title: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          user_email: string
+          title: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          user_email?: string
+          title?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      conversation_messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          type: 'user' | 'assistant'
+          content: string
+          metadata: any // JSONB
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          type: 'user' | 'assistant'
+          content: string
+          metadata?: any
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          type?: 'user' | 'assistant'
+          content?: string
+          metadata?: any
+          created_at?: string
+        }
+      }
       reviews: {
         Row: {
           id: string
@@ -31,90 +83,6 @@ export type Database = {
           user_email?: string
           rating?: number
           text?: string
-          created_at?: string
-        }
-      }
-      interview_sessions: {
-        Row: {
-          id: string
-          user_id: string
-          title: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          title: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          title?: string
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      questions: {
-        Row: {
-          id: string
-          session_id: string
-          question_text: string
-          audio_url: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          session_id: string
-          question_text: string
-          audio_url?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          session_id?: string
-          question_text?: string
-          audio_url?: string | null
-          created_at?: string
-        }
-      }
-      answers: {
-        Row: {
-          id: string
-          question_id: string
-          direct_answer: string
-          detailed_explanation: string
-          example: string | null
-          brute_force_approach: string | null
-          optimal_approach: string | null
-          time_complexity: string | null
-          space_complexity: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          question_id: string
-          direct_answer: string
-          detailed_explanation: string
-          example?: string | null
-          brute_force_approach?: string | null
-          optimal_approach?: string | null
-          time_complexity?: string | null
-          space_complexity?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          question_id?: string
-          direct_answer?: string
-          detailed_explanation?: string
-          example?: string | null
-          brute_force_approach?: string | null
-          optimal_approach?: string | null
-          time_complexity?: string | null
-          space_complexity?: string | null
           created_at?: string
         }
       }

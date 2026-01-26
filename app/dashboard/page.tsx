@@ -34,6 +34,7 @@ interface Answer {
 }
 
 interface QuestionAnswer {
+  id?: string // Supabase Message ID for deletion
   question: string
   answer: Answer
   timestamp: Date
@@ -64,6 +65,7 @@ export default function DashboardPage() {
   const [userReviews, setUserReviews] = useState<UserReview[]>([])
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '', files: [] as File[] })
   const [projects, setProjects] = useState<Project[]>([])
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const { toast } = useToast()
   const { theme, toggleTheme } = useTheme()
   const { user } = useUser()
@@ -93,10 +95,11 @@ export default function DashboardPage() {
     loadReviews()
   }, [])
 
-  // Load projects from Supabase when user is available
+  // Load projects and history from Supabase when user is available
   useEffect(() => {
     if (user?.id) {
       loadProjects()
+      loadHistory()
     }
   }, [user?.id])
 
@@ -126,6 +129,123 @@ export default function DashboardPage() {
         description: 'Could not fetch your saved projects.',
         variant: 'destructive',
       })
+    }
+  }
+
+  // Ensure a conversation session exists
+  const ensureSession = async () => {
+    if (sessionId) return sessionId
+    if (!user?.id) return null
+
+    try {
+      console.log('Ensuring session for user:', user.id)
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (existing) {
+        console.log('Found existing session:', existing.id)
+        setSessionId(existing.id)
+        return existing.id
+      }
+
+      console.log('Creating new session...')
+      const { data: newSession, error } = await supabase
+        .from('conversations')
+        .insert({
+          user_id: user.id,
+          user_email: user.primaryEmailAddress?.emailAddress || '',
+          title: 'General Practice',
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      if (newSession) {
+        setSessionId(newSession.id)
+        return newSession.id
+      }
+    } catch (error) {
+      console.error('Error ensuring session:', error)
+      return null
+    }
+  }
+
+  // Load history from Supabase
+  const loadHistory = async () => {
+    if (!user?.id) return
+
+    try {
+      console.log('Loading history...')
+      const sid = await ensureSession()
+      if (!sid) {
+        console.log('No session ID found.')
+        return
+      }
+
+      console.log('Fetching messages for session:', sid)
+      const { data: messages, error } = await supabase
+        .from('conversation_messages')
+        .select('*')
+        .eq('conversation_id', sid)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (error) {
+        console.error('Error fetching messages:', error)
+        throw error
+      }
+
+      console.log('Messages fetched:', messages?.length)
+
+      if (messages) {
+        // Log all messages to see what we got
+        console.log('Raw messages dump:', JSON.stringify(messages.map(m => ({ id: m.id, type: m.type, hasMeta: !!m.metadata, metaRaw: m.metadata }))))
+
+        const historyItems: QuestionAnswer[] = []
+        messages.forEach(msg => {
+          // Debug why a message might be skipped
+          if (msg.type === 'assistant') {
+            console.log('Found assistant msg:', msg.id, 'Metadata:', msg.metadata)
+          }
+
+          if (msg.type === 'assistant' && msg.metadata) {
+            const answer = msg.metadata as Answer
+            const questionText = (msg.metadata as any)._question || "Question"
+
+            historyItems.push({
+              id: msg.id,
+              question: questionText,
+              answer: answer,
+              timestamp: new Date(msg.created_at)
+            })
+          }
+        })
+        console.log('Parsed history items:', historyItems.length)
+        setHistory(historyItems)
+      }
+    } catch (error) {
+      console.error('Error loading history:', error)
+    }
+  }
+
+  const handleDeleteHistoryItem = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('conversation_messages')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+      setHistory(prev => prev.filter(item => item.id !== id))
+      toast({ title: 'Deleted', description: 'History item removed.' })
+    } catch (error) {
+      console.error("Error deleting history:", error)
+      toast({ title: 'Error', variant: 'destructive', description: "Failed to delete item." })
     }
   }
 
@@ -389,9 +509,41 @@ export default function DashboardPage() {
       console.log('Answer received:', answer)
       setCurrentAnswer(answer)
 
+      // Save persistence
+      let savedId: string | undefined
+      const sid = await ensureSession()
+
+      if (sid) {
+        // 1. Save User Question
+        await supabase.from('conversation_messages').insert({
+          conversation_id: sid,
+          type: 'user',
+          content: transcription
+        })
+
+        // 2. Save Assistant Answer (with question in metadata for easy restoration)
+        const { data: savedAnswerMsg, error: saveError } = await supabase.from('conversation_messages').insert({
+          conversation_id: sid,
+          type: 'assistant',
+          content: "Answer Generated",
+          metadata: {
+            ...answer,
+            _question: transcription
+          }
+        }).select().single()
+
+        if (saveError) {
+          console.error('Error saving assistant answer:', saveError)
+        } else {
+          console.log('Saved assistant answer:', savedAnswerMsg?.id)
+          if (savedAnswerMsg) savedId = savedAnswerMsg.id
+        }
+      }
+
       // Add to history
       setHistory((prev) => [
         {
+          id: savedId, // undefined if save failed, that's ok
           question: transcription,
           answer,
           timestamp: new Date(),
@@ -606,24 +758,36 @@ export default function DashboardPage() {
                       <CardContent className="p-4 sm:p-6 pt-0">
                         <div className="space-y-2">
                           {history.slice(0, 5).map((item, index) => (
-                            <button
-                              type="button"
-                              key={index}
-                              onClick={() => {
-                                setCurrentQuestion(item.question)
-                                setCurrentAnswer(item.answer)
-                              }}
-                              className="w-full text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 min-h-[44px]"
-                              aria-label={`View previous question: ${item.question.substring(0, 50)}${item.question.length > 50 ? '...' : ''}`}
-                            >
-                              <p className="text-sm font-medium line-clamp-2 text-gray-900 dark:text-gray-100">
-                                {item.question}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {item.timestamp.toLocaleTimeString()}
-                              </p>
-                            </button>
+                            <div key={item.id || index} className="group relative">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCurrentQuestion(item.question)
+                                  setCurrentAnswer(item.answer)
+                                }}
+                                className="w-full text-left p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-gray-200 dark:border-gray-700 min-h-[44px]"
+                              >
+                                <p className="text-sm font-medium line-clamp-2 text-gray-900 dark:text-gray-100 pr-6">
+                                  {item.question}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {item.timestamp.toLocaleTimeString()}
+                                </p>
+                              </button>
+                              {item.id && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteHistoryItem(item.id!)
+                                  }}
+                                  className="absolute right-2 top-3 p-1.5 text-gray-400 hover:text-red-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                  title="Delete from history"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </CardContent>

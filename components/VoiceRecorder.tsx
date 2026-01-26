@@ -322,6 +322,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
     isProcessingRef.current = false
     phraseSetRef.current = new Set();
     hasSpeechStartedRef.current = false; // Reset speech detection flag
+    setIsPaused(false); // <--- CRITICAL FIX: Reset paused state
 
     // Clear any existing silence timer
     if (silenceTimerRef.current) {
@@ -567,8 +568,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
         >
           <span
             className={`inline-block h-6 w-6 sm:h-7 sm:w-7 transform rounded-full bg-white shadow-md border-2 transition-all duration-300 ease-in-out ${autoMode
-                ? 'translate-x-7 sm:translate-x-8 border-green-400'
-                : 'translate-x-1 border-gray-300 dark:border-gray-500'
+              ? 'translate-x-7 sm:translate-x-8 border-green-400'
+              : 'translate-x-1 border-gray-300 dark:border-gray-500'
               }`}
           />
         </button>
