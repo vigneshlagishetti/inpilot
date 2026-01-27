@@ -1,8 +1,9 @@
 // Maintenance Mode Configuration
-// Set MAINTENANCE_MODE to true to enable maintenance mode for all pages
-// Set MAINTENANCE_MODE to false to disable maintenance mode
+// Set NEXT_PUBLIC_MAINTENANCE_MODE environment variable to 'true' to enable maintenance mode
+// Set it to 'false' or leave it unset to disable maintenance mode
+// This allows you to toggle maintenance mode without code changes
 
-export const MAINTENANCE_MODE = true
+export const MAINTENANCE_MODE = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true'
 
 // Optional: Whitelist specific paths that should bypass maintenance mode
 // For example, you might want to allow access to the maintenance page itself
