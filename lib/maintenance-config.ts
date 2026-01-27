@@ -1,10 +1,5 @@
-// Real-time maintenance mode configuration using Supabase
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Get maintenance mode status from database
@@ -36,22 +31,27 @@ export async function getMaintenanceMode(): Promise<boolean> {
  * Update maintenance mode status in database
  * @param enabled - Whether maintenance mode should be enabled
  * @param updatedBy - User ID of the admin making the change
+ * @param client - Optional authenticated Supabase client
  */
 export async function setMaintenanceMode(
     enabled: boolean,
-    updatedBy?: string
+    updatedBy?: string,
+    client: SupabaseClient = supabase
 ): Promise<{ success: boolean; message: string }> {
     try {
-        const { error } = await supabase
+        const { error } = await client
             .from('maintenance_settings')
-            .update({
+            .upsert({
+                key: 'maintenance_mode',
                 value: enabled,
                 updated_by: updatedBy || 'system',
-            })
-            .eq('key', 'maintenance_mode');
+                updated_at: new Date().toISOString(),
+            }, { onConflict: 'key' });
 
         if (error) {
             console.error('Error updating maintenance mode:', error);
+            // Throwing error to be caught by the caller or the catch block below
+            // Return formatted error
             return {
                 success: false,
                 message: `Failed to update maintenance mode: ${error.message}`,
@@ -62,11 +62,11 @@ export async function setMaintenanceMode(
             success: true,
             message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'} successfully`,
         };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error in setMaintenanceMode:', error);
         return {
             success: false,
-            message: 'An unexpected error occurred',
+            message: `An unexpected error occurred: ${error.message || error}`,
         };
     }
 }
@@ -80,10 +80,17 @@ export const MAINTENANCE_WHITELIST = [
     '/api',
     '/_next',
     '/favicon.ico',
+    '/sign-in',
+    '/sign-up',
 ];
 
 // Optional: Whitelist specific email addresses that can bypass maintenance mode
 export const ADMIN_EMAILS = [
     'lvigneshbunty789@gmail.com',
     // Add more admin emails here
+];
+
+// Optional: Whitelist specific User IDs (Clerk) that can bypass maintenance mode
+export const ADMIN_IDS = [
+    'user_38eCGWlRm5M7BDNSVvobCLfhS36', // Vignesh (Admin)
 ];

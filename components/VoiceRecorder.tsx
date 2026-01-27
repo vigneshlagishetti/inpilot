@@ -557,14 +557,15 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           Manual
         </span>
 
-        <button
+        <Button
           type="button"
           onClick={() => setAutoMode((prev) => !prev)}
           className={`relative inline-flex h-8 w-14 sm:h-9 sm:w-16 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-inner ${autoMode
             ? 'bg-gradient-to-r from-green-500 to-green-600 focus:ring-green-500'
             : 'bg-gray-200/80 dark:bg-gray-600/50 focus:ring-gray-400'
             }`}
-          aria-pressed={autoMode}
+          aria-pressed={autoMode ? 'true' : 'false'}
+          title={autoMode ? "Switch to Manual Mode" : "Switch to Auto Mode"}
         >
           <span
             className={`inline-block h-6 w-6 sm:h-7 sm:w-7 transform rounded-full bg-white shadow-md border-2 transition-all duration-300 ease-in-out ${autoMode
@@ -572,7 +573,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
               : 'translate-x-1 border-gray-300 dark:border-gray-500'
               }`}
           />
-        </button>
+        </Button>
 
         <span className={`text-sm sm:text-base font-semibold transition-colors duration-200 ${autoMode ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
           }`}>

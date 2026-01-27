@@ -1,7 +1,9 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { MAINTENANCE_WHITELIST, ADMIN_EMAILS } from "./lib/maintenance-config";
+import { MAINTENANCE_WHITELIST, ADMIN_EMAILS, ADMIN_IDS } from "./lib/maintenance-config";
 import { createClient } from '@supabase/supabase-js';
+
+// Force recompile: 2026-01-27T13:58:35+05:30
 
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -53,18 +55,45 @@ export default clerkMiddleware(async (auth, request) => {
       // Check if user is an admin (if authenticated)
       try {
         const session = auth();
-        const userEmail = session?.sessionClaims?.email as string | undefined;
+        const userId = session?.userId;
+        const claims = session?.sessionClaims;
+
+        console.log(`[Middleware] Checking admin bypass for user: ${userId}`);
+
+        // Try multiple ways to get email
+        const userEmail = (claims?.email as string) ||
+          (claims?.user_email as string) ||
+          (claims?.email_address as string);
+
+        const isAdminMetadata = (claims?.publicMetadata as any)?.isAdmin === true;
+
+        console.log(`[Middleware] Claims:`, JSON.stringify(claims));
+        console.log(`[Middleware] Email found: ${userEmail}`);
+        console.log(`[Middleware] Is Admin Metadata: ${isAdminMetadata}`);
+        console.log(`[Middleware] Whitelisted Emails:`, ADMIN_EMAILS);
 
         // Allow admin users to bypass maintenance mode
-        if (userEmail && ADMIN_EMAILS.includes(userEmail)) {
+        // Check:
+        // 1. Email whitelist
+        // 2. User ID whitelist (Robust fallback)
+        // 3. isAdmin metadata
+
+        const isEmailWhitelisted = userEmail && ADMIN_EMAILS.includes(userEmail);
+        const isIdWhitelisted = userId && ADMIN_IDS.includes(userId);
+
+        if (isEmailWhitelisted || isIdWhitelisted || isAdminMetadata) {
+          console.log('[Middleware] Admin bypass GRANTED');
           // Admin user - allow access
           if (!isPublicRoute(request)) {
             auth().protect();
           }
           return;
+        } else {
+          console.log('[Middleware] Admin bypass DENIED');
+          console.log(`[Middleware] Debug: Email=${userEmail}, ID=${userId}`);
         }
       } catch (error) {
-        // User not authenticated, continue to redirect
+        console.error('[Middleware] Error checking admin status:', error);
       }
 
       // Redirect to maintenance page

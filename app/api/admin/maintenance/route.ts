@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@supabase/supabase-js';
 import { isAdmin, hasPermission } from '@/lib/admin';
 import { getMaintenanceMode, setMaintenanceMode } from '@/lib/maintenance-config';
 
@@ -48,7 +49,7 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
     try {
-        const { userId } = await auth();
+        const { userId, getToken } = await auth();
 
         if (!userId) {
             return NextResponse.json(
@@ -84,8 +85,40 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Create authenticated Supabase client
+        let supabaseClient = undefined;
+        try {
+            console.log('[API] Attempting to get Supabase token...');
+            const token = await getToken({ template: 'supabase' });
+
+            if (token) {
+                console.log('[API] Token found, length:', token.length);
+                supabaseClient = createClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                    {
+                        global: { headers: { Authorization: `Bearer ${token}` } },
+                    }
+                );
+            } else {
+                console.warn('[API] No Supabase token found. Ensure Clerk-Supabase integration is set up.');
+                // Return explicit error to help user debug
+                return NextResponse.json(
+                    { error: 'Missing Clerk-Supabase Token. Please enable Supabase Integration in Clerk Dashboard.' },
+                    { status: 500 }
+                );
+            }
+        } catch (tokenError) {
+            console.error('[API] Error getting Supabase token:', tokenError);
+            return NextResponse.json(
+                { error: 'Error retrieving authentication token' },
+                { status: 500 }
+            );
+        }
+
         // Update maintenance mode in database (real-time!)
-        const result = await setMaintenanceMode(enabled, userId);
+        // Pass the authenticated client if available, otherwise it falls back to anon (and might fail RLS)
+        const result = await setMaintenanceMode(enabled, userId, supabaseClient);
 
         if (!result.success) {
             return NextResponse.json(
