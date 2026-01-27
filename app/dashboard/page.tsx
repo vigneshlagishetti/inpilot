@@ -9,7 +9,8 @@ import { ResumeUploader, Project } from '@/components/ResumeUploader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle, Mail, Send, ThumbsUp, X, Upload } from 'lucide-react'
+import Link from 'next/link'
+import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle, Mail, Send, ThumbsUp, X, Upload, Shield, UserCog } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { motion } from 'framer-motion'
 import { useTheme } from '@/components/ThemeProvider'
@@ -66,6 +67,7 @@ export default function DashboardPage() {
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '', files: [] as File[] })
   const [projects, setProjects] = useState<Project[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const { toast } = useToast()
   const { theme, toggleTheme } = useTheme()
   const { user } = useUser()
@@ -101,8 +103,19 @@ export default function DashboardPage() {
       loadProjects()
       loadHistory()
       loadResumeFromDB()
+      checkAdminStatus()
     }
   }, [user?.id])
+
+  const checkAdminStatus = async () => {
+    try {
+      const response = await fetch('/api/admin/check')
+      const data = await response.json()
+      if (data.isAdmin) setIsAdmin(true)
+    } catch (error) {
+      console.error('Error checking admin status:', error)
+    }
+  }
 
   const loadProjects = async () => {
     try {
@@ -727,6 +740,25 @@ export default function DashboardPage() {
             </div>
           </motion.div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {isAdmin && (
+              <Link href="/admin">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hidden sm:flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                >
+                  <UserCog className="w-5 h-5" />
+                  <span>Admin Panel</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="flex sm:hidden rounded-full hover:bg-white/50 dark:hover:bg-white/10 h-8 w-8 text-blue-600 dark:text-blue-400"
+                >
+                  <UserCog className="w-5 h-5" />
+                </Button>
+              </Link>
+            )}
             <Button
               type="button"
               variant="ghost"
