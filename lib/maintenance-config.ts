@@ -2,7 +2,7 @@
 // Set MAINTENANCE_MODE to true to enable maintenance mode for all pages
 // Set MAINTENANCE_MODE to false to disable maintenance mode
 
-export const MAINTENANCE_MODE = false
+export const MAINTENANCE_MODE = true
 
 // Optional: Whitelist specific paths that should bypass maintenance mode
 // For example, you might want to allow access to the maintenance page itself
