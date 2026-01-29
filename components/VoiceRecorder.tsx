@@ -549,10 +549,12 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Manual/Continuous Mode Toggle */}
-      <div className="flex items-center justify-center gap-4 p-4 rounded-xl bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-white/30 dark:border-white/20 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-all duration-300 shadow-sm">
-        <span className={`text-sm sm:text-base font-semibold transition-colors duration-200 ${!autoMode ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+      <div className="flex items-center justify-center gap-2.5 px-3 py-2.5 rounded-lg bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 shadow-sm hover:shadow-md">
+        <span className={`text-xs sm:text-sm font-semibold transition-all duration-200 ${!autoMode 
+          ? 'text-gray-900 dark:text-white' 
+          : 'text-gray-400 dark:text-gray-500'
           }`}>
           Manual
         </span>
@@ -560,24 +562,31 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
         <Button
           type="button"
           onClick={() => setAutoMode((prev) => !prev)}
-          className={`relative inline-flex h-8 w-14 sm:h-9 sm:w-16 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-inner ${autoMode
-            ? 'bg-gradient-to-r from-green-500 to-green-600 focus:ring-green-500'
-            : 'bg-gray-200/80 dark:bg-gray-600/50 focus:ring-gray-400'
+          className={`relative inline-flex h-6 w-11 sm:h-7 sm:w-12 items-center justify-start rounded-full p-0.5 transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-1 shadow-sm hover:shadow ${autoMode
+            ? 'bg-green-500 focus:ring-green-500'
+            : 'bg-gray-300 dark:bg-gray-600 focus:ring-gray-400'
             }`}
           aria-pressed={autoMode ? 'true' : 'false'}
           title={autoMode ? "Switch to Manual Mode" : "Switch to Auto Mode"}
         >
           <span
-            className={`inline-block h-6 w-6 sm:h-7 sm:w-7 transform rounded-full bg-white shadow-md border-2 transition-all duration-300 ease-in-out ${autoMode
-              ? 'translate-x-7 sm:translate-x-8 border-green-400'
-              : 'translate-x-1 border-gray-300 dark:border-gray-500'
+            className={`flex items-center justify-center h-5 w-5 sm:h-6 sm:w-6 transform rounded-full bg-white shadow-md transition-all duration-200 ease-in-out ${autoMode
+              ? 'translate-x-5 sm:translate-x-5'
+              : 'translate-x-0'
               }`}
-          />
+          >
+            <span className={`w-2 h-2 rounded-full transition-colors duration-200 ${autoMode 
+              ? 'bg-green-500' 
+              : 'bg-gray-400'
+            }`} />
+          </span>
         </Button>
 
-        <span className={`text-sm sm:text-base font-semibold transition-colors duration-200 ${autoMode ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+        <span className={`text-xs sm:text-sm font-semibold transition-all duration-200 ${autoMode 
+          ? 'text-green-600 dark:text-green-400' 
+          : 'text-gray-400 dark:text-gray-500'
           }`}>
-          {isMobile.current ? 'Auto' : 'Auto Mode'}
+          Auto
         </span>
       </div>
 
@@ -587,18 +596,18 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           <Button
             onClick={resumeListening}
             variant="default"
-            size="lg"
-            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 hover:scale-105 transition-all duration-300 shadow-lg h-11 sm:h-12 group"
+            size="default"
+            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 hover:scale-[1.02] transition-all duration-200 shadow-md hover:shadow-lg px-6 py-2 text-sm group"
           >
             Ready for Next Question
-            <span className="ml-2 group-hover:translate-x-1 transition-transform duration-300">→</span>
+            <span className="ml-2 group-hover:translate-x-1 transition-transform duration-200">→</span>
           </Button>
         </div>
       )}
 
-      <Card className={`transition-all duration-500 ${isRecording ? 'ring-2 ring-blue-500 shadow-xl bg-blue-50/50 dark:bg-blue-950/20' : 'hover:shadow-lg'} group`}>
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex flex-col items-center space-y-4">
+      <Card className={`transition-all duration-300 ${isRecording ? 'ring-2 ring-blue-500 shadow-lg bg-blue-50/30 dark:bg-blue-950/10' : 'hover:shadow-md'} group border-gray-200 dark:border-gray-700`}>
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col items-center space-y-3">
             <div className="relative">
               {/* Animated ring for recording */}
               {isRecording && (
@@ -606,8 +615,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
               )}
               {/* Glow effect on hover */}
               <div className={`absolute inset-0 rounded-full transition-all duration-300 ${isRecording
-                ? 'bg-red-500/30 blur-xl'
-                : 'bg-blue-500/0 group-hover:bg-blue-500/30 blur-xl'
+                ? 'bg-red-500/20 blur-lg'
+                : 'bg-blue-500/0 group-hover:bg-blue-500/20 blur-lg'
                 }`}></div>
               <Button
                 type="button"
@@ -631,9 +640,9 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                   }
                 }}
                 onClick={(e) => { e.preventDefault(); }}
-                className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full transition-all duration-300 select-none ${isRecording
-                  ? 'recording-pulse scale-110 shadow-2xl'
-                  : 'hover:scale-110 hover:shadow-xl bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                className={`relative w-16 h-16 sm:w-18 sm:h-18 rounded-full transition-all duration-200 select-none ${isRecording
+                  ? 'recording-pulse scale-105 shadow-xl'
+                  : 'hover:scale-105 hover:shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
                   } ${!isRecording ? 'group-hover:animate-pulse' : ''}`}
                 disabled={buttonLocked || recognitionActive || (autoMode && isRecording) || isPaused}
                 style={{ touchAction: 'manipulation' }}
@@ -662,9 +671,9 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
               )}
             </div>
             {(transcript || interimTranscript) && (
-              <div className="w-full p-3 sm:p-4 bg-muted rounded-lg">
-                <p className="text-xs sm:text-sm font-medium mb-2">Transcript:</p>
-                <p className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words">
+              <div className="w-full p-3 bg-muted rounded-lg border border-gray-200 dark:border-gray-700">
+                <p className="text-xs font-semibold mb-1.5 text-gray-700 dark:text-gray-300">Transcript:</p>
+                <p className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words leading-relaxed">
                   {transcript}
                   {interimTranscript && (
                     <span className="text-gray-400 italic">{interimTranscript}</span>
@@ -684,7 +693,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                   resultIndexRef.current = 0
                   setTimeout(() => startRecording(), 500)
                 }}
-                className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+                className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02] text-sm py-2"
               >
                 Next Question
               </Button>
@@ -694,15 +703,14 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
       </Card>
       {/* Stop Button (manual override for mobile reliability) */}
       {isRecording && (
-        <div className="flex justify-center mt-2">
+        <div className="flex justify-center">
           <Button
             onClick={() => stopRecording()}
             variant="outline"
             size="sm"
-            className="bg-red-100 text-red-700 border-red-300 hover:bg-red-200 hover:text-red-900"
-            style={{ minWidth: '100px' }}
+            className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:text-red-700 hover:border-red-300 shadow-sm transition-all duration-200 px-6"
           >
-            Stop
+            Stop Recording
           </Button>
         </div>
       )}
