@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
-import { Mic, MicOff, Volume2 } from 'lucide-react'
+import { Mic, MicOff, Volume2, Pause, Play } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
@@ -20,6 +20,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   const [isListening, setIsListening] = useState(false);
   const [autoMode, setAutoMode] = useState(autoStart);
   const [isPaused, setIsPaused] = useState(false);
+  const [isTemporarilyPaused, setIsTemporarilyPaused] = useState(false);
   const [buttonLocked, setButtonLocked] = useState(false);
   const [recognitionActive, setRecognitionActive] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -30,6 +31,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   const transcriptRef = useRef('');
   const autoModeRef = useRef(autoStart);
   const isPausedRef = useRef(false);
+  const isTemporarilyPausedRef = useRef(false);
   const isInitializedRef = useRef(false);
   const isMobile = useRef(false);
   const lastProcessedResultRef = useRef('');
@@ -37,6 +39,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   const isProcessingRef = useRef(false);
   const phraseSetRef = useRef<Set<string>>(new Set());
   const hasSpeechStartedRef = useRef(false);
+  const currentInterimTextRef = useRef(''); // Track current interim text
   const { toast } = useToast()
 
   // Expose startRecording to parent via ref
@@ -65,6 +68,10 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   useEffect(() => {
     isPausedRef.current = isPaused;
   }, [isPaused]);
+
+  useEffect(() => {
+    isTemporarilyPausedRef.current = isTemporarilyPaused;
+  }, [isTemporarilyPaused]);
 
   useEffect(() => {
     // Prevent multiple initializations
@@ -159,8 +166,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
             console.log('Audio input ended');
           };
           recognition.onresult = (event: any) => {
-            if (!isRecordingRef.current || isProcessingRef.current) {
-              console.log('Skipping result processing - not recording or already processing');
+            if (!isRecordingRef.current || isProcessingRef.current || isTemporarilyPausedRef.current) {
+              console.log('Skipping result processing - not recording, already processing, or paused');
               return;
             }
             isProcessingRef.current = true;
@@ -196,18 +203,29 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                   // Start new 1.5s silence timer
                   silenceTimerRef.current = setTimeout(() => {
                     console.log('1.5 seconds of silence detected - processing speech');
+                    console.log('transcriptRef.current:', transcriptRef.current);
+                    console.log('transcript state:', transcript);
+                    console.log('interimTranscript:', interimTranscript);
                     if (isRecordingRef.current) {
-                      const answerText = transcriptRef.current.trim() || interimTranscript.trim() || currentInterim.trim() || transcriptPiece;
-                      transcriptRef.current = answerText;
-                      setTranscript(answerText);
-                      setInterimTranscript('');
+                      // Use transcriptRef.current as the primary source of truth
+                      const answerText = transcriptRef.current.trim();
+                      
                       if (answerText) {
-                        console.log('Sending transcript:', answerText);
+                        console.log('Sending transcript to AI:', answerText);
+                        setTranscript(answerText);
+                        setInterimTranscript('');
                         onTranscriptionComplete(answerText);
                         toast({
                           title: 'Generating Answer',
                           description: 'Processing your question...',
                           variant: 'default',
+                        });
+                      } else {
+                        console.warn('No transcript to send - transcript is empty');
+                        toast({
+                          title: 'No Speech Detected',
+                          description: 'Please try again',
+                          variant: 'destructive',
                         });
                       }
                       stopRecording();
@@ -218,9 +236,16 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                   }, 1500);
                   
                   console.log('Silence timer reset - actively listening...');
+                  console.log('Current accumulated transcript:', transcriptRef.current);
                 }
                 if (event.results[i].isFinal) {
                   gotFinal = true;
+                  console.log('Final result received:', transcriptPiece);
+                  console.log('Current full transcript (ref):', transcriptRef.current);
+                  console.log('Current full transcript (state):', transcript);
+                  console.log('Phrase already in set?', phraseSetRef.current.has(transcriptPiece));
+                  console.log('Is duplicate?', lastTranscript && (lastTranscript.includes(transcriptPiece) || transcriptPiece.includes(lastTranscript)));
+                  
                   if (
                     phraseSetRef.current.has(transcriptPiece) ||
                     !transcriptPiece ||
@@ -228,11 +253,17 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                   ) {
                     console.log('Phrase already added, empty, or near-duplicate, skipping:', transcriptPiece);
                   } else {
+                    console.log('Adding new phrase to transcript:', transcriptPiece);
                     phraseSetRef.current.add(transcriptPiece);
+                    
+                    // Get current transcript value before updating
+                    const currentTranscript = transcriptRef.current;
+                    console.log('Before update - transcriptRef:', currentTranscript);
+                    
                     setTranscript((prev) => {
                       const newText = prev + (prev ? ' ' : '') + transcriptPiece;
                       transcriptRef.current = newText;
-                      console.log('Updated full transcript:', newText);
+                      console.log('After update - new full transcript:', newText);
                       return newText;
                     });
                   }
@@ -241,6 +272,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
                   break;
                 } else {
                   if (i === event.results.length - 1) {
+                    currentInterimTextRef.current = transcriptPiece // Save to ref
                     setInterimTranscript(transcriptPiece);
                     currentInterim = transcriptPiece;
                     console.log('Updated interim:', transcriptPiece);
@@ -250,6 +282,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
               let speechDetected = false;
               if (currentInterim.trim() && currentInterim.trim() !== interimTranscript.trim()) {
                 const cleanInterim = currentInterim.trim().replace(/\b(\w+)( \1\b)+/gi, '$1');
+                currentInterimTextRef.current = cleanInterim // Save to ref
                 setInterimTranscript(cleanInterim);
                 speechDetected = true;
                 console.log('Updated interim:', cleanInterim);
@@ -291,7 +324,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
             }
             
             // For both mobile and desktop: maintain continuous listening
-            if (isRecordingRef.current && recognitionRef.current && !isPausedRef.current) {
+            if (isRecordingRef.current && recognitionRef.current && !isPausedRef.current && !isTemporarilyPausedRef.current) {
               // If speech hasn't started yet, restart immediately to keep listening
               if (!hasSpeechStartedRef.current) {
                 recognitionRestartingRef.current = true;
@@ -368,7 +401,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
     isProcessingRef.current = false
     phraseSetRef.current = new Set();
     hasSpeechStartedRef.current = false; // Reset speech detection flag
-    setIsPaused(false); // <--- CRITICAL FIX: Reset paused state
+    setIsPaused(false); // Reset answer review pause state
+    setIsTemporarilyPaused(false); // Reset temporary pause state
 
     // Clear any existing silence timer
     if (silenceTimerRef.current) {
@@ -594,6 +628,114 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
     }
   }
 
+  const handlePauseToggle = () => {
+    if (isTemporarilyPaused) {
+      // Resume
+      console.log('Resuming from temporary pause...')
+      console.log('Current transcript before resume:', transcriptRef.current)
+      console.log('Current visible transcript:', transcript)
+      console.log('Phrase set size:', phraseSetRef.current.size)
+      setIsTemporarilyPaused(false)
+      
+      // Reset processing flags to allow new results
+      isProcessingRef.current = false
+      recognitionRestartingRef.current = false
+      
+      // CRITICAL: Reset result index since recognition will restart with new results
+      resultIndexRef.current = 0
+      lastProcessedResultRef.current = ''
+      
+      // DON'T reset phraseSetRef - we want to keep previous phrases
+      // DON'T reset transcriptRef - we want to keep the existing transcript
+      // Clear interim transcript to start fresh
+      setInterimTranscript('')
+      
+      // Reset speech detection flag for new session
+      hasSpeechStartedRef.current = false
+      // Reset result indices and clear interim ref when resuming
+      resultIndexRef.current = 0
+      lastProcessedResultRef.current = ''
+      currentInterimTextRef.current = ''
+      
+      // Mark as listening again
+      setIsListening(true)
+      setRecognitionActive(true)
+      
+      if (recognitionRef.current && isRecordingRef.current) {
+        try {
+          console.log('Starting recognition after pause...')
+          recognitionRef.current.start()
+          toast({
+            title: 'Resumed',
+            description: 'Continue speaking...',
+          })
+        } catch (e) {
+          console.error('Could not resume recognition:', e)
+          // If start fails, try again after a short delay
+          setTimeout(() => {
+            if (isRecordingRef.current && recognitionRef.current && !isTemporarilyPausedRef.current) {
+              try {
+                recognitionRef.current.start()
+                console.log('Recognition restarted after retry')
+              } catch (err) {
+                console.error('Second attempt to start recognition failed:', err)
+              }
+            }
+          }, 200)
+        }
+      }
+    } else {
+      // Pause - SAVE any interim text first!
+      console.log('Pausing recording...')
+      console.log('Current transcript before pause:', transcriptRef.current)
+      console.log('Current visible transcript:', transcript)
+      console.log('Current interim text:', currentInterimTextRef.current)
+      
+      // Save any interim text that hasn't been finalized yet
+      if (currentInterimTextRef.current.trim()) {
+        const interimText = currentInterimTextRef.current.trim()
+        console.log('Saving interim text before pause:', interimText)
+        
+        // Add to transcript
+        const newTranscript = transcriptRef.current ? transcriptRef.current + ' ' + interimText : interimText
+        transcriptRef.current = newTranscript
+        setTranscript(newTranscript)
+        
+        // Add to phrase set to avoid duplicates later
+        phraseSetRef.current.add(interimText.toLowerCase())
+        
+        console.log('Updated transcript after saving interim:', transcriptRef.current)
+      }
+      
+      setIsTemporarilyPaused(true)
+      
+      // Update listening states
+      setIsListening(false)
+      setRecognitionActive(false)
+      
+      // Clear interim transcript and ref after saving
+      currentInterimTextRef.current = ''
+      setInterimTranscript('')
+      
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop()
+          // Clear silence timer when pausing
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current)
+            silenceTimerRef.current = null
+          }
+          toast({
+            title: 'Paused',
+            description: `Captured: "${transcriptRef.current || 'nothing yet'}"`,
+          })
+        } catch (e) {
+          console.log('Could not pause recognition:', e)
+        }
+      }
+    }
+  }
+
   return (
     <div className="space-y-3">
       {/* Manual/Continuous Mode Toggle */}
@@ -651,6 +793,36 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
         </div>
       )}
 
+      {/* Pause/Play Button - Show when recording and not in answer review mode */}
+      {isRecording && !isPaused && (
+        <div className="flex justify-center">
+          <Button
+            onClick={handlePauseToggle}
+            variant="outline"
+            size="default"
+            className={`gap-2 px-4 sm:px-6 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
+              isTemporarilyPaused
+                ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40'
+                : 'bg-orange-50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 border-orange-300 dark:border-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900/40'
+            }`}
+          >
+            {isTemporarilyPaused ? (
+              <>
+                <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Resume Recording</span>
+                <span className="xs:hidden">Resume</span>
+              </>
+            ) : (
+              <>
+                <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Pause Recording</span>
+                <span className="xs:hidden">Pause</span>
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
       <Card className={`transition-all duration-300 ${isRecording ? 'ring-2 ring-blue-500 shadow-lg bg-blue-50/30 dark:bg-blue-950/10' : 'hover:shadow-md'} group border-gray-200 dark:border-gray-700`}>
         <CardContent className="p-4 sm:p-5">
           <div className="flex flex-col items-center space-y-3">
@@ -704,12 +876,14 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
               <p className="text-xs sm:text-sm font-medium">
                 {isPaused
                   ? 'Paused - Read & explain your answer'
-                  : autoMode
-                    ? (isRecording ? 'Listening... (Auto mode)' : 'Processing...')
-                    : (isRecording ? 'Recording... (Stops after 1.5s silence)' : 'Click to start recording')
+                  : isTemporarilyPaused
+                    ? '⏸️ Paused - Click Play to resume'
+                    : autoMode
+                      ? (isRecording ? 'Listening... (Auto mode)' : 'Processing...')
+                      : (isRecording ? 'Recording... (Stops after 1.5s silence)' : 'Click to start recording')
                 }
               </p>
-              {isListening && !isPaused && (
+              {isListening && !isPaused && !isTemporarilyPaused && (
                 <div className="flex items-center justify-center mt-2 space-x-2">
                   <Volume2 className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 animate-pulse" />
                   <span className="text-xs text-muted-foreground">Listening...</span>

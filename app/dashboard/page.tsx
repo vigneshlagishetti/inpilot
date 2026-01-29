@@ -552,11 +552,10 @@ export default function DashboardPage() {
 
     // Set a random loading tip
     const tips = [
-      'Analyzing your question with AI...',
-      'Crafting a detailed response...',
-      'Processing with advanced AI...',
-      'Generating personalized answer...',
-      'AI is thinking deeply...',
+      'AI thinking... ~3s',
+      'Generating answer... ~3-4s',
+      'Processing... ~3s',
+      'Almost ready... ~4s',
     ]
     setLoadingTip(tips[Math.floor(Math.random() * tips.length)])
 

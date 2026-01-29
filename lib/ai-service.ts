@@ -64,106 +64,82 @@ export async function generateAnswer(
     console.log('Project context provided:', !!projectContext)
 
     // ALWAYS act as the candidate when resume is uploaded
-    systemPrompt = `YOU ARE THE CANDIDATE IN AN INTERVIEW. You are answering questions about yourself.
+    systemPrompt = `YOU ARE THE CANDIDATE. Answer as yourself in first person.
 
-YOUR NAME: ${extractedName || '[Extract from resume below]'}
+NAME: ${extractedName || '[Extract from resume]'}
+${jobRole ? `ROLE: ${jobRole}` : ''}
 
-${jobRole ? `POSITION YOU'RE APPLYING FOR: ${jobRole}` : ''}
-
-YOUR COMPLETE BACKGROUND:
+RESUME:
 ${resumeContent}
 
-${projectContext ? `
----PROJECT CONTEXT / README---
-${projectContext}
------------------------------
-CRITICAL: The user has provided detailed documentation about their specific project(s).
-If the question is about "my project", "the architecture", "how user auth works", etc., YOU MUST REFER TO THIS CONTEXT.
-Answer specifically using the file names, technologies, and structure described above.
-` : ''}
+${projectContext ? `PROJECTS:\n${projectContext}\n` : ''}
+${customInstructions ? `INSTRUCTIONS: ${customInstructions}\n` : ''}
 
-${customInstructions ? `SPECIAL INSTRUCTIONS:\n${customInstructions}\n` : ''}
-
-CRITICAL INSTRUCTIONS:
-- Answer AS YOURSELF (the candidate), not as a coach
-- Use ONLY information from YOUR resume above${jobRole ? `\n- Tailor your answers to the ${jobRole} position` : ''}
-- Speak in first person: "I am...", "My name is...", "I worked at..."
-- For "what is your name" or "introduce yourself": Start with "My name is ${extractedName}" or "I'm ${extractedName}"
-- For technical questions: Use your skills/projects from the resume and relate them to ${jobRole || 'the role'}
-- If Project Context is provided above, use it to answer deep questions about your specific implementation.
-- Be confident and conversational as if speaking to an interviewer${jobRole ? ` for a ${jobRole} position` : ''}
-
-SPEAKING STYLE:
-- Talk naturally, like a normal person in an interview
-- Use simple, clear English
+RULES:
+- Answer AS YOURSELF (the candidate)
+- Use first person: "I am...", "I worked..."
 - Be conversational and confident
-- Avoid jargon - speak like you're explaining to a colleague
+- Keep answers clear and natural
 
-Answer this interview question: "${question}"`
+QUESTION: "${question}"`
   } else {
-    systemPrompt = `You are an interview coach providing sample answers.
-
-Guidelines:
-- Use first person ("I would...", "In my experience...")
-- Natural, flowing conversation
-- Clear and interview-appropriate`
+    systemPrompt = `You are an interview coach. Use first person, be conversational and clear.`
   }
 
   systemPrompt += `
 
-CRITICAL: ALWAYS provide a direct answer first! Never skip this section.
-
-ANSWER FORMAT (use these exact section markers):
+FORMAT (use exact markers):
 
 ---DIRECT_ANSWER---
-[REQUIRED: 3-4 lines giving a comprehensive, direct, conversational opening. This MUST be filled for ANY question type. Start answering immediately.]
+[3-4 lines direct answer]
 
 ---DETAILED_EXPLANATION---
-[2-3 paragraphs explaining your understanding and approach in detail. If Project Context is provided and relevant, explain how the project implements this.]
+[2-3 paragraphs detailed explanation]
 
 ---EXAMPLE---
-[1 paragraph with a concrete example, or write "N/A" if not applicable]
+[1 paragraph example, or "N/A"]
 
 ---BRUTE_FORCE_APPROACH---
-[CRITICAL: ONLY if the question explicitly asks you to WRITE CODE, IMPLEMENT, PROGRAM, or SOLVE AN ALGORITHM, then provide brute force approach. Questions like "what is", "explain", "describe", "tell me about" should get "N/A" even if the topic is technical. For actual coding requests, you MUST provide step-by-step brute force explanation. Otherwise write "N/A"]
+[ONLY for code questions: brute force explanation, else "N/A"]
 
 ---BRUTE_FORCE_CODE---
-[CRITICAL: ONLY if the question asks to WRITE/IMPLEMENT CODE, provide fully commented Python code. Questions asking to "explain" or "what is" should get "N/A". For actual code requests, you MUST provide code. Otherwise write "N/A"]
+[ONLY for code questions: Python code, else "N/A"]
 
 ---BRUTE_FORCE_TIME---
-[ONLY for actual coding problems where you provided code above, format as: "O(n), where n is... This is because..." Otherwise write "N/A"]
+[ONLY for code questions: "O(n), because..." else "N/A"]
 
 ---BRUTE_FORCE_SPACE---
-[ONLY for actual coding problems where you provided code above, format as: "O(n), where n is... This is because..." Otherwise write "N/A"]
+[ONLY for code questions: "O(n), because..." else "N/A"]
 
 ---BRUTE_FORCE_WHY---
-[ONLY for actual coding problems where you provided code above, explain why approach works. Otherwise write "N/A"]
+[ONLY for code questions: why it works, else "N/A"]
 
 ---OPTIMAL_APPROACH---
-[CRITICAL: ONLY if question asks to WRITE/IMPLEMENT CODE, provide optimal approach. Questions asking "what is", "explain", etc. should get "N/A". For code requests, you MUST provide optimal approach. Otherwise write "N/A"]
+[ONLY for code questions: optimal approach, else "N/A"]
 
 ---OPTIMAL_CODE---
-[CRITICAL: ONLY if question asks to WRITE/IMPLEMENT CODE, provide fully commented optimal Python code. Otherwise write "N/A"]
+[ONLY for code questions: optimal Python code, else "N/A"]
 
 ---OPTIMAL_TIME---
-[ONLY for actual coding problems where you provided code above, format as: "O(n), where n is... This is because..." Otherwise write "N/A"]
+[ONLY for code questions: "O(n), because..." else "N/A"]
 
 ---OPTIMAL_SPACE---
-[ONLY for actual coding problems where you provided code above, format as: "O(n), where n is... This is because..." Otherwise write "N/A"]
+[ONLY for code questions: "O(n), because..." else "N/A"]
 
 ---OPTIMAL_WHY---
-[ONLY for actual coding problems where you provided code above, explain why better than brute force. Otherwise write "N/A"]`
+[ONLY for code questions: why better, else "N/A"]`
 
   try {
     console.log('Generating answer for question:', question)
     const completion = await openai.chat.completions.create({
-      model: 'llama-3.1-8b-instant', // Fastest model for instant responses
+      model: 'llama-3.1-8b-instant',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: question },
       ],
-      temperature: 0.2, // Lower for faster, focused responses
-      max_tokens: 2000, // Increased for detailed coding responses
+      temperature: 0.3,
+      max_tokens: 1200,
+      top_p: 0.9,
     })
 
     console.log('Answer generated successfully')
