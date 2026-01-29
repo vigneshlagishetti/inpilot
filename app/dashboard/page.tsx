@@ -55,6 +55,7 @@ export default function DashboardPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [currentQuestion, setCurrentQuestion] = useState('')
   const [currentAnswer, setCurrentAnswer] = useState<Answer | null>(null)
+  const [generationTime, setGenerationTime] = useState<number | null>(null)
   const [history, setHistory] = useState<QuestionAnswer[]>([])
   const [resumeContent, setResumeContent] = useState<string>('')
   const [resumeFileName, setResumeFileName] = useState<string>('')
@@ -583,6 +584,7 @@ export default function DashboardPage() {
     console.log('Num Projects:', currentProjects.length)
 
     try {
+      const startTime = Date.now()
       console.log('Sending request to /api/generate-answer...')
       const response = await fetch('/api/generate-answer', {
         method: 'POST',
@@ -608,7 +610,11 @@ export default function DashboardPage() {
       }
 
       const answer = await response.json()
+      const endTime = Date.now()
+      const timeTaken = ((endTime - startTime) / 1000).toFixed(2)
       console.log('Answer received:', answer)
+      console.log('Generation time:', timeTaken, 'seconds')
+      setGenerationTime(parseFloat(timeTaken))
       setCurrentAnswer(answer)
 
       // Save persistence
@@ -951,9 +957,9 @@ export default function DashboardPage() {
                       >
                         {loadingTip}
                       </motion.p>
-                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-3 flex items-center justify-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        Usually takes 3-5 seconds
+                      <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-3 flex flex-wrap items-center justify-center gap-1 sm:gap-1.5 px-4">
+                        <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse flex-shrink-0" />
+                        <span className="whitespace-nowrap">Estimated: <span className="font-semibold text-blue-600 dark:text-blue-400">3-8 seconds</span></span>
                       </p>
                     </CardContent>
                   </Card>
@@ -963,7 +969,7 @@ export default function DashboardPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5 }}
                   >
-                    <AnswerDisplay question={currentQuestion} {...currentAnswer} />
+                    <AnswerDisplay question={currentQuestion} {...currentAnswer} generationTime={generationTime} />
 
                     {/* Next Question Button - Only show on mobile */}
                     <div className="mt-6 flex justify-center lg:hidden">

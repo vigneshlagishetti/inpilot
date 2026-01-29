@@ -21,6 +21,7 @@ interface AnswerDisplayProps {
   optimalTime?: string
   optimalSpace?: string
   optimalWhy?: string
+  generationTime?: number | null
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -97,6 +98,7 @@ export function AnswerDisplay({
   optimalTime,
   optimalSpace,
   optimalWhy,
+  generationTime,
 }: AnswerDisplayProps) {
 
   const hasBruteForce = bruteForceApproach || bruteForceCode
@@ -347,6 +349,23 @@ export function AnswerDisplay({
               </CardContent>
             </Card>
           )}
+        </motion.div>
+      )}
+
+      {/* Generation Time Display */}
+      {generationTime && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+          className="flex justify-center pt-2 px-4"
+        >
+          <div className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-500 flex-shrink-0" />
+            <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+              Generated in <span className="font-semibold text-blue-600 dark:text-blue-400">{generationTime}s</span>
+            </span>
+          </div>
         </motion.div>
       )}
     </div>

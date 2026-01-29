@@ -63,6 +63,10 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
   }, [isRecording]);
 
   useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
+
+  useEffect(() => {
     // Prevent multiple initializations
     if (isInitializedRef.current) return;
 
@@ -117,24 +121,24 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
             }
           }
           const recognition = new SpeechRecognition();
-          if (isMobile.current) {
-            recognition.continuous = false;
-            recognition.maxAlternatives = 1;
-            console.log('Mobile optimizations applied: continuous mode disabled');
-          } else {
-            recognition.continuous = true;
-          }
+          
+          // Enable continuous mode for both mobile and desktop
+          recognition.continuous = true;
           recognition.interimResults = true;
           recognition.lang = 'en-US';
+          
+          if (isMobile.current) {
+            recognition.maxAlternatives = 1;
+            console.log('Mobile speech recognition configured with continuous mode');
+          } else {
+            console.log('Desktop speech recognition configured');
+          }
           recognition.onstart = () => {
             setIsListening(true);
             setRecognitionActive(true);
             console.log('Speech recognition started successfully');
-            if (isMobile.current && !autoModeRef.current) {
-              toast({
-                title: 'Listening...',
-                description: 'Speak now, the microphone is active.',
-              });
+            if (isMobile.current) {
+              console.log('Mobile: Mic is active - listening continuously...');
             }
           };
           recognition.onaudiostart = () => {
@@ -149,6 +153,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           };
           recognition.onspeechend = () => {
             console.log('Speech ended - user stopped speaking');
+            // Don't stop immediately - let the silence timer handle it
           };
           recognition.onaudioend = () => {
             console.log('Audio input ended');
@@ -163,32 +168,56 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
               let currentInterim = '';
               let newFinalText = '';
               let gotFinal = false;
+              
+              // Check if we have actual speech content
+              let hasValidSpeech = false;
+              
               for (let i = resultIndexRef.current; i < event.results.length; i++) {
                 if (i < resultIndexRef.current) continue;
                 let transcriptPiece = event.results[i][0].transcript.trim();
+                
+                // Only count as valid speech if we have actual words
+                if (transcriptPiece && transcriptPiece.length > 0) {
+                  hasValidSpeech = true;
+                  // Mark that speech has started with actual content
+                  hasSpeechStartedRef.current = true;
+                }
+                
                 transcriptPiece = transcriptPiece.replace(/\b(\w+)( \1\b)+/gi, '$1');
                 const lastTranscript = transcriptRef.current;
-                // Always reset global silence timer on any result
-                if (hasSpeechStartedRef.current) {
-                  if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+                
+                // Only start silence timer if we have valid speech content
+                if (hasValidSpeech && hasSpeechStartedRef.current) {
+                  // Clear existing timer and reset it
+                  if (silenceTimerRef.current) {
+                    clearTimeout(silenceTimerRef.current);
+                  }
+                  
+                  // Start new 1.5s silence timer
                   silenceTimerRef.current = setTimeout(() => {
+                    console.log('1.5 seconds of silence detected - processing speech');
                     if (isRecordingRef.current) {
                       const answerText = transcriptRef.current.trim() || interimTranscript.trim() || currentInterim.trim() || transcriptPiece;
                       transcriptRef.current = answerText;
                       setTranscript(answerText);
                       setInterimTranscript('');
                       if (answerText) {
+                        console.log('Sending transcript:', answerText);
                         onTranscriptionComplete(answerText);
                         toast({
-                          title: 'Answer Callback Triggered',
-                          description: `Transcript sent: ${answerText}`,
+                          title: 'Generating Answer',
+                          description: 'Processing your question...',
                           variant: 'default',
                         });
                       }
                       stopRecording();
-                      setIsPaused(true);
+                      if (autoModeRef.current) {
+                        setIsPaused(true);
+                      }
                     }
                   }, 1500);
+                  
+                  console.log('Silence timer reset - actively listening...');
                 }
                 if (event.results[i].isFinal) {
                   gotFinal = true;
@@ -254,30 +283,47 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder({ onTranscription
           recognition.onend = () => {
             setIsListening(false);
             setRecognitionActive(false);
-            console.log('Recognition ended, isRecording:', isRecordingRef.current, 'isMobile:', isMobile.current);
+            console.log('Recognition ended, isRecording:', isRecordingRef.current, 'isMobile:', isMobile.current, 'hasSpeech:', hasSpeechStartedRef.current);
+            
             if (recognitionRestartingRef.current) {
               console.log('Recognition restart already in progress, skipping');
               return;
             }
-            if (isMobile.current) {
-              console.log('Mobile: not restarting recognition automatically');
-              return;
-            }
-            if (isRecordingRef.current && recognitionRef.current && !isProcessingRef.current) {
-              recognitionRestartingRef.current = true;
-              const restartDelay = 100;
-              console.log(`Scheduling restart in ${restartDelay}ms`);
-              setTimeout(() => {
-                if (isRecordingRef.current && recognitionRef.current) {
-                  try {
-                    console.log('Attempting to restart recognition...');
-                    recognitionRef.current.start();
-                  } catch (e) {
-                    console.log('Could not restart recognition:', e);
+            
+            // For both mobile and desktop: maintain continuous listening
+            if (isRecordingRef.current && recognitionRef.current && !isPausedRef.current) {
+              // If speech hasn't started yet, restart immediately to keep listening
+              if (!hasSpeechStartedRef.current) {
+                recognitionRestartingRef.current = true;
+                // Slightly longer delay for mobile to ensure proper restart
+                const restartDelay = isMobile.current ? 100 : 50;
+                console.log(`${isMobile.current ? 'Mobile' : 'Desktop'}: No speech yet - restarting in ${restartDelay}ms to keep listening...`);
+                setTimeout(() => {
+                  if (isRecordingRef.current && recognitionRef.current) {
+                    try {
+                      recognitionRef.current.start();
+                      console.log('Recognition restarted - actively listening for speech');
+                    } catch (e) {
+                      console.log('Could not restart recognition:', e);
+                      // If restart fails, try again after a bit
+                      if (isRecordingRef.current) {
+                        setTimeout(() => {
+                          if (isRecordingRef.current && recognitionRef.current) {
+                            try {
+                              recognitionRef.current.start();
+                            } catch (err) {
+                              console.error('Second restart attempt failed:', err);
+                            }
+                          }
+                        }, 200);
+                      }
+                    }
                   }
-                }
-                recognitionRestartingRef.current = false;
-              }, restartDelay);
+                  recognitionRestartingRef.current = false;
+                }, restartDelay);
+              } else {
+                console.log('Speech was detected - letting silence timer handle completion');
+              }
             }
           };
           recognitionRef.current = recognition;
