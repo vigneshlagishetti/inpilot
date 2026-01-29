@@ -564,7 +564,7 @@ Contributions are welcome!
 <td align="center">
 <img src="https://img.icons8.com/color/96/000000/domain.png" width="48"/>
 <br><b>Website</b>
-<br>inpilot.vigneshlagishetti.me
+<br>vigneshlagishetti.me
 </td>
 </tr>
 </table>
