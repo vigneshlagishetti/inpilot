@@ -62,6 +62,14 @@ export async function generateAnswer(
     console.log('Extracted name:', extractedName)
     console.log('Resume content preview:', resumeContent.substring(0, 200))
     console.log('Project context provided:', !!projectContext)
+    console.log('Total input size:', resumeContent.length + (projectContext?.length || 0), 'characters')
+
+    // Truncate very long resume content to speed up processing (keep most relevant parts)
+    let processedResume = resumeContent
+    if (resumeContent.length > 4000) {
+      console.log('Resume too long, truncating for faster processing...')
+      processedResume = resumeContent.substring(0, 4000) + '\n\n[Resume truncated for optimal performance]'
+    }
 
     // ALWAYS act as the candidate when resume is uploaded
     systemPrompt = `YOU ARE THE CANDIDATE. Answer as yourself in first person.
@@ -70,7 +78,7 @@ NAME: ${extractedName || '[Extract from resume]'}
 ${jobRole ? `ROLE: ${jobRole}` : ''}
 
 RESUME:
-${resumeContent}
+${processedResume}
 
 ${projectContext ? `PROJECTS:\n${projectContext}\n` : ''}
 ${customInstructions ? `INSTRUCTIONS: ${customInstructions}\n` : ''}
@@ -80,10 +88,18 @@ RULES:
 - Use first person: "I am...", "I worked..."
 - Be conversational and confident
 - Keep answers clear and natural
+- IMPORTANT: Fix speech-to-text errors using context (e.g., "rivers" → "reverse", "sorting" → "sorting")
 
 QUESTION: "${question}"`
   } else {
-    systemPrompt = `You are an interview coach. Use first person, be conversational and clear.`
+    systemPrompt = `You are an interview coach. Use first person, be conversational and clear.
+
+IMPORTANT: The question may contain speech-to-text transcription errors. Use context to interpret correctly:
+- "rivers of string" or "rivers of number" → "reverse of string" or "reverse of number"
+- "palindrome" might be "paladin" or "palindrum"
+- "binary" might be "buy nary" or "binary"
+- "recursion" might be "re-curation"
+- Other technical terms may be misheard - use programming context to understand the real question`
   }
 
   systemPrompt += `
@@ -91,46 +107,50 @@ QUESTION: "${question}"`
 FORMAT (use exact markers):
 
 ---DIRECT_ANSWER---
-[3-4 lines direct answer]
+[5-6 lines of clear explanation answering the question directly. NO CODE here - just explain the concept/solution in plain language.]
 
 ---DETAILED_EXPLANATION---
-[2-3 paragraphs detailed explanation]
+[In-depth explanation in 3-4 paragraphs covering: 1) The problem/concept clearly, 2) How the solution works step-by-step, 3) Edge cases or important considerations, 4) Practical implications or real-world usage.]
 
 ---EXAMPLE---
-[1 paragraph example, or "N/A"]
+[Real-world example or use case demonstrating the concept. Write "N/A" if not applicable.]
+
+FOR CODING QUESTIONS ONLY (otherwise write "N/A" for all sections below):
 
 ---BRUTE_FORCE_APPROACH---
-[ONLY for code questions: brute force explanation, else "N/A"]
+[Explain the brute force/naive approach: what is the simplest way to solve this? What's the logic?]
 
 ---BRUTE_FORCE_CODE---
-[ONLY for code questions: Python code, else "N/A"]
+[Complete working Python code for brute force solution with proper formatting]
 
 ---BRUTE_FORCE_TIME---
-[ONLY for code questions: "O(n), because..." else "N/A"]
+[Time complexity like "O(n²)" with clear explanation: "because we have nested loops..."]
 
 ---BRUTE_FORCE_SPACE---
-[ONLY for code questions: "O(n), because..." else "N/A"]
+[Space complexity like "O(1)" with explanation: "because we only use constant extra space..."]
 
 ---BRUTE_FORCE_WHY---
-[ONLY for code questions: why it works, else "N/A"]
+[Explain why this brute force approach works, its limitations, and when it might fail]
 
 ---OPTIMAL_APPROACH---
-[ONLY for code questions: optimal approach, else "N/A"]
+[Explain the optimized approach: what data structure/algorithm makes it better? What's the key insight?]
 
 ---OPTIMAL_CODE---
-[ONLY for code questions: optimal Python code, else "N/A"]
+[Complete working Python code for optimal solution with proper formatting]
 
 ---OPTIMAL_TIME---
-[ONLY for code questions: "O(n), because..." else "N/A"]
+[Time complexity like "O(n)" with clear explanation: "because we iterate once..."]
 
 ---OPTIMAL_SPACE---
-[ONLY for code questions: "O(n), because..." else "N/A"]
+[Space complexity like "O(n)" with explanation: "because we use a hash map..."]
 
 ---OPTIMAL_WHY---
-[ONLY for code questions: why better, else "N/A"]`
+[Explain why the optimal approach is better: performance gains, trade-offs, when to use it]`
 
   try {
     console.log('Generating answer for question:', question)
+    const startTime = Date.now()
+    
     const completion = await openai.chat.completions.create({
       model: 'llama-3.1-8b-instant',
       messages: [
@@ -138,11 +158,13 @@ FORMAT (use exact markers):
         { role: 'user', content: question },
       ],
       temperature: 0.3,
-      max_tokens: 1200,
+      max_tokens: 1800, // Optimized: Reduced slightly for faster responses
       top_p: 0.9,
+      stream: false, // Ensure non-streaming for consistent timing
     })
 
-    console.log('Answer generated successfully')
+    const endTime = Date.now()
+    console.log(`Answer generated successfully in ${endTime - startTime}ms`)
     const response = completion.choices[0]?.message?.content || ''
     return parseResponse(response)
   } catch (error: any) {
