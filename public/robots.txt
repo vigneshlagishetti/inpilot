@@ -1,0 +1,25 @@
+# Robots.txt for Inpilot - AI Interview Practice
+# https://inpilot.vigneshlagishetti.me
+
+User-agent: *
+Allow: /
+
+# Allow all pages
+Allow: /dashboard
+Allow: /sign-in
+Allow: /sign-up
+Allow: /maintenance
+
+# Sitemap location
+Sitemap: https://inpilot.vigneshlagishetti.me/sitemap.xml
+
+# Allow Google bots
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+# Disallow Clerk internal routes from indexing
+Disallow: /api/
+Disallow: /_next/

@@ -4,6 +4,16 @@ import AdminGuard from '@/components/AdminGuard';
 import { Home } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import AdminNav from '@/components/admin/AdminNav';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'Admin Dashboard - Inpilot',
+    description: 'Admin dashboard for Inpilot',
+    robots: {
+        index: false, // Don't index admin pages
+        follow: false,
+    },
+};
 
 export default function AdminLayout({
     children,
