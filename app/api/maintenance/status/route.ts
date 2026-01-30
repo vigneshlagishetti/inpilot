@@ -10,10 +10,20 @@ export async function GET() {
     try {
         const enabled = await getMaintenanceMode();
 
-        return NextResponse.json({
-            enabled,
-            message: enabled ? 'Maintenance mode is active' : 'Site is operational',
-        });
+        return NextResponse.json(
+            {
+                enabled,
+                message: enabled ? 'Maintenance mode is active' : 'Site is operational',
+                timestamp: Date.now(),
+            },
+            {
+                headers: {
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
+                }
+            }
+        );
     } catch (error) {
         console.error('Error getting maintenance status:', error);
         return NextResponse.json(

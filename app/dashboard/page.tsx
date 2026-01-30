@@ -6,6 +6,7 @@ import { UserButton, useUser } from '@clerk/nextjs'
 import { VoiceRecorder } from '@/components/VoiceRecorder'
 import { AnswerDisplay } from '@/components/AnswerDisplay'
 import { ResumeUploader, Project } from '@/components/ResumeUploader'
+import MaintenanceChecker from '@/components/MaintenanceChecker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -1526,6 +1527,9 @@ export default function DashboardPage() {
           </p>
         </footer>
       </main>
+
+      {/* Real-time Maintenance Mode Monitor */}
+      <MaintenanceChecker />
     </div>
   )
 }

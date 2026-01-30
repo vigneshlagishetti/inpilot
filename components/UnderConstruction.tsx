@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -9,12 +9,84 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
 import { useClerk, SignedIn, SignedOut } from '@clerk/nextjs'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export default function UnderConstruction() {
     const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' })
     const { toast } = useToast()
     const { signOut } = useClerk()
     const router = useRouter()
+
+    // Monitor maintenance mode - redirect to dashboard when it's turned off
+    useEffect(() => {
+        // Initial check
+        checkMaintenanceMode()
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel('maintenance-recovery-checker')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'maintenance_settings',
+                    filter: 'key=eq.maintenance_mode'
+                },
+                (payload) => {
+                    console.log('[MaintenanceRecovery] Maintenance mode changed:', payload)
+                    if (payload.new && 'value' in payload.new) {
+                        const isEnabled = payload.new.value as boolean
+                        if (!isEnabled) {
+                            // Maintenance mode turned OFF - redirect to dashboard
+                            console.log('[MaintenanceRecovery] Redirecting to dashboard')
+                            toast({
+                                title: "We're back!",
+                                description: "Maintenance is complete. Redirecting...",
+                            })
+                            setTimeout(() => {
+                                window.location.href = '/dashboard'
+                            }, 1000)
+                        }
+                    }
+                }
+            )
+            .subscribe((status) => {
+                console.log('[MaintenanceRecovery] Subscription status:', status)
+            })
+
+        // Fallback polling every 5 seconds
+        const pollInterval = setInterval(checkMaintenanceMode, 5000)
+
+        return () => {
+            supabase.removeChannel(channel)
+            clearInterval(pollInterval)
+        }
+    }, [router, toast])
+
+    async function checkMaintenanceMode() {
+        try {
+            const response = await fetch(`/api/maintenance/status?t=${Date.now()}`, {
+                cache: 'no-store',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                }
+            })
+            const data = await response.json()
+            
+            if (!data.enabled) {
+                console.log('[MaintenanceRecovery] Maintenance mode ended via polling')
+                window.location.href = '/dashboard'
+            }
+        } catch (error) {
+            console.error('[MaintenanceRecovery] Error checking maintenance mode:', error)
+        }
+    }
 
     const handleSubmit = async () => {
         if (contactForm.name && contactForm.email && contactForm.message) {

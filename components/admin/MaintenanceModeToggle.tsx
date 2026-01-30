@@ -5,6 +5,12 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, AlertTriangle } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function MaintenanceModeToggle() {
     const [enabled, setEnabled] = useState(false);
@@ -14,11 +20,41 @@ export default function MaintenanceModeToggle() {
 
     useEffect(() => {
         fetchMaintenanceStatus();
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel('maintenance-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'maintenance_settings',
+                    filter: 'key=eq.maintenance_mode'
+                },
+                (payload) => {
+                    console.log('Maintenance mode changed:', payload);
+                    if (payload.new && 'value' in payload.new) {
+                        setEnabled(payload.new.value as boolean);
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     async function fetchMaintenanceStatus() {
         try {
-            const response = await fetch('/api/admin/maintenance');
+            // Add cache-busting parameter
+            const response = await fetch(`/api/admin/maintenance?t=${Date.now()}`, {
+                cache: 'no-store',
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                }
+            });
             const data = await response.json();
             setEnabled(data.maintenanceMode);
         } catch (error) {
@@ -36,12 +72,14 @@ export default function MaintenanceModeToggle() {
     async function handleToggle(checked: boolean) {
         setUpdating(true);
         try {
-            const response = await fetch('/api/admin/maintenance', {
+            const response = await fetch(`/api/admin/maintenance?t=${Date.now()}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
                 },
                 body: JSON.stringify({ enabled: checked }),
+                cache: 'no-store',
             });
 
             const data = await response.json();
@@ -51,6 +89,15 @@ export default function MaintenanceModeToggle() {
                 toast({
                     title: 'Success',
                     description: data.message,
+                });
+                
+                // Broadcast change via realtime channel (realtime will auto-update other clients)
+                // The database trigger will handle this, but we can also manually trigger a refresh
+                await fetch(`/api/maintenance/status?t=${Date.now()}`, {
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    }
                 });
             } else {
                 toast({

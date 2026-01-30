@@ -30,10 +30,19 @@ export async function GET() {
 
         const maintenanceMode = await getMaintenanceMode();
 
-        return NextResponse.json({
-            maintenanceMode,
-            message: maintenanceMode ? 'Maintenance mode is enabled' : 'Maintenance mode is disabled',
-        });
+        return NextResponse.json(
+            {
+                maintenanceMode,
+                message: maintenanceMode ? 'Maintenance mode is enabled' : 'Maintenance mode is disabled',
+            },
+            {
+                headers: {
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
+                }
+            }
+        );
     } catch (error) {
         console.error('Error getting maintenance status:', error);
         return NextResponse.json(
