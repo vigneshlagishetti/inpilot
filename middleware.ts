@@ -16,6 +16,13 @@ const isAdminRoute = createRouteMatcher([
   '/admin(.*)',
 ]);
 
+// Routes that should be blocked during maintenance mode
+// Landing page (/) is NOT blocked - users can see it even during maintenance
+const isProtectedFromMaintenance = createRouteMatcher([
+  '/dashboard(.*)',
+  '/test-rating(.*)',
+]);
+
 // Create Supabase client for middleware
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,10 +55,14 @@ export default clerkMiddleware(async (auth, request) => {
 
   if (maintenanceMode) {
 
-    // Check if the current path is whitelisted
+    // Check if the current path should be blocked by maintenance mode
+    // Landing page (/) is allowed, only dashboard and protected routes are blocked
+    const shouldBlockForMaintenance = isProtectedFromMaintenance(request);
+
+    // Check if the current path is whitelisted (API routes, static files, etc)
     const isWhitelisted = MAINTENANCE_WHITELIST.some(path => pathname.startsWith(path));
 
-    if (!isWhitelisted && pathname !== '/maintenance') {
+    if (shouldBlockForMaintenance && !isWhitelisted && pathname !== '/maintenance') {
       // Check if user is an admin (if authenticated)
       try {
         const session = auth();

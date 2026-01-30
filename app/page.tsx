@@ -14,9 +14,31 @@ export default function Home() {
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
-      router.push('/dashboard')
+      // Check if maintenance mode is on before redirecting
+      checkMaintenanceAndRedirect()
     }
   }, [isLoaded, isSignedIn, router])
+
+  async function checkMaintenanceAndRedirect() {
+    try {
+      const response = await fetch('/api/maintenance/status?t=' + Date.now(), {
+        cache: 'no-store'
+      })
+      const data = await response.json()
+      
+      if (data.enabled) {
+        // Maintenance is ON - stay on landing page, don't auto-redirect
+        console.log('[Home] Maintenance mode is active - staying on landing page')
+      } else {
+        // No maintenance - safe to redirect to dashboard
+        router.push('/dashboard')
+      }
+    } catch (error) {
+      // If check fails, try to go to dashboard anyway (middleware will handle it)
+      console.error('[Home] Error checking maintenance:', error)
+      router.push('/dashboard')
+    }
+  }
 
   if (!isLoaded) {
     return (

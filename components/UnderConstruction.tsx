@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Construction, Mail, Send, Github, Linkedin, Globe, Clock, Wrench, Sparkles, LogOut, UserCog } from 'lucide-react'
+import { Construction, Mail, Send, Github, Linkedin, Globe, Clock, Wrench, Sparkles, LogOut, UserCog, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
@@ -198,7 +198,7 @@ export default function UnderConstruction() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.7, duration: 0.6 }}
-                        className="mb-8"
+                        className="mb-8 flex flex-col sm:flex-row gap-3 items-center justify-center"
                     >
                         <Button
                             onClick={() => signOut(() => router.push('/'))}
@@ -209,22 +209,34 @@ export default function UnderConstruction() {
                             <LogOut className="w-4 h-4" />
                             Sign Out
                         </Button>
+                        <Link href="/sign-in">
+                            <Button variant="outline" size="sm" className="gap-2 border-purple-200 hover:bg-purple-50 text-purple-600 dark:border-purple-900 dark:hover:bg-purple-950/30 dark:text-purple-400">
+                                <Shield className="w-4 h-4" />
+                                Admin Login
+                            </Button>
+                        </Link>
                     </motion.div>
                 </SignedIn>
 
                 {/* Debug Info for troubleshooting */}
 
-            {/* Login Option for Admins who are logged out */}
+            {/* Login Options for users who are logged out */}
             <SignedOut>
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.7, duration: 0.6 }}
-                    className="mb-8"
+                    className="mb-8 flex flex-col sm:flex-row gap-3 items-center justify-center"
                 >
                     <Link href="/sign-in">
                         <Button variant="outline" size="sm" className="gap-2 border-blue-200 hover:bg-blue-50 text-blue-600 dark:border-blue-900 dark:hover:bg-blue-950/30 dark:text-blue-400">
                             <UserCog className="w-4 h-4" />
+                            User Login
+                        </Button>
+                    </Link>
+                    <Link href="/sign-in">
+                        <Button variant="outline" size="sm" className="gap-2 border-purple-200 hover:bg-purple-50 text-purple-600 dark:border-purple-900 dark:hover:bg-purple-950/30 dark:text-purple-400">
+                            <Shield className="w-4 h-4" />
                             Admin Login
                         </Button>
                     </Link>
