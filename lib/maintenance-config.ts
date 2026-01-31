@@ -39,6 +39,9 @@ export async function setMaintenanceMode(
     client: SupabaseClient = supabase
 ): Promise<{ success: boolean; message: string }> {
     try {
+        console.log(`[setMaintenanceMode] 🔄 Updating maintenance mode to: ${enabled}`);
+        console.log(`[setMaintenanceMode] Updated by: ${updatedBy || 'system'}`);
+        
         const { error } = await client
             .from('maintenance_settings')
             .upsert({
@@ -49,7 +52,7 @@ export async function setMaintenanceMode(
             }, { onConflict: 'key' });
 
         if (error) {
-            console.error('Error updating maintenance mode:', error);
+            console.error('[setMaintenanceMode] ❌ Error updating maintenance mode:', error);
             // Throwing error to be caught by the caller or the catch block below
             // Return formatted error
             return {
@@ -58,12 +61,25 @@ export async function setMaintenanceMode(
             };
         }
 
+        console.log(`[setMaintenanceMode] ✅ Successfully updated to: ${enabled}`);
+        
+        // Verify the update by reading it back
+        const { data: verifyData, error: verifyError } = await client
+            .from('maintenance_settings')
+            .select('value')
+            .eq('key', 'maintenance_mode')
+            .single();
+            
+        if (!verifyError && verifyData) {
+            console.log(`[setMaintenanceMode] 🔍 Verification - Database now shows: ${verifyData.value}`);
+        }
+
         return {
             success: true,
             message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'} successfully`,
         };
     } catch (error: any) {
-        console.error('Error in setMaintenanceMode:', error);
+        console.error('[setMaintenanceMode] ❌ Exception in setMaintenanceMode:', error);
         return {
             success: false,
             message: `An unexpected error occurred: ${error.message || error}`,

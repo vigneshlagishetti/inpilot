@@ -66,7 +66,10 @@ export default function UnderConstruction() {
                             setTimeout(() => {
                                 // Add recovery token to bypass middleware check temporarily (30 seconds)
                                 const bypassUntil = Date.now() + 30000; // 30 seconds
-                                window.location.href = `/dashboard?_recovery=true&_bypass=${bypassUntil}`
+                                const redirectUrl = `/dashboard?_recovery=true&_bypass=${bypassUntil}`;
+                                console.log('[MaintenanceRecovery] 🔄 Redirecting to:', redirectUrl);
+                                console.log('[MaintenanceRecovery] 📅 Bypass valid until:', new Date(bypassUntil).toISOString());
+                                window.location.href = redirectUrl;
                             }, 1000)
                         }
                     }

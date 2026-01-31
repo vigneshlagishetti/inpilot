@@ -41,20 +41,36 @@ export default clerkMiddleware(async (auth, request) => {
   // Check for recovery bypass cookie (set when leaving maintenance mode)
   const cookies = request.cookies;
   const bypassCookie = cookies.get('maintenance_bypass');
+  
+  console.log('[Middleware] === MAINTENANCE CHECK START ===');
+  console.log('[Middleware] Path:', pathname);
+  console.log('[Middleware] Bypass cookie exists:', !!bypassCookie);
+  if (bypassCookie) {
+    console.log('[Middleware] Bypass cookie value:', bypassCookie.value);
+    console.log('[Middleware] Current timestamp:', Date.now());
+  }
+  
   if (bypassCookie) {
     const bypassTime = parseInt(bypassCookie.value);
+    const timeRemaining = bypassTime - Date.now();
+    console.log('[Middleware] Bypass expiry:', bypassTime);
+    console.log('[Middleware] Time remaining (ms):', timeRemaining);
+    
     if (Date.now() < bypassTime) {
-      console.log('[Middleware] Recovery bypass cookie active - allowing access');
+      console.log('[Middleware] ✅ BYPASS ACTIVE - Allowing request');
       // Continue with normal auth flow but skip maintenance check
       if (!isPublicRoute(request)) {
         auth().protect();
       }
       return NextResponse.next();
     } else {
+      console.log('[Middleware] ⚠️ Bypass cookie expired - Clearing and checking database');
       // Cookie expired, clear it
       const response = NextResponse.next();
       response.cookies.delete('maintenance_bypass');
     }
+  } else {
+    console.log('[Middleware] No bypass cookie - Proceeding to database check');
   }
 
   // Allow bypass via query param and SET cookie for subsequent requests
@@ -81,10 +97,10 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   // Check if maintenance mode is enabled (from database for real-time updates)
+  console.log('[Middleware] 🔍 Checking database for maintenance status...');
   let maintenanceMode = false;
   try {
-    // IMPORTANT: Force fresh query with timestamp to avoid Edge caching
-    const timestamp = Date.now();
+    // CRITICAL: Force completely fresh query - no caching at any level
     const { data, error } = await supabase
       .from('maintenance_settings')
       .select('value')
@@ -94,27 +110,35 @@ export default clerkMiddleware(async (auth, request) => {
 
     if (!error && data) {
       maintenanceMode = data.value;
+      console.log('[Middleware] 📊 Database says maintenance mode:', maintenanceMode);
     } else if (error) {
-      console.error('[Middleware] Error checking maintenance mode:', error);
+      console.error('[Middleware] ❌ Error checking maintenance mode:', error);
       // Fallback to environment variable
       maintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
+      console.log('[Middleware] 🔄 Falling back to env var:', maintenanceMode);
     }
   } catch (error) {
-    console.error('[Middleware] Error checking maintenance mode:', error);
+    console.error('[Middleware] ❌ Exception checking maintenance mode:', error);
     // Fallback to environment variable
     maintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
+    console.log('[Middleware] 🔄 Falling back to env var:', maintenanceMode);
   }
 
   if (maintenanceMode) {
+    console.log('[Middleware] 🚧 Maintenance mode is ON - Evaluating access...');
 
     // Check if the current path should be blocked by maintenance mode
     // Landing page (/) is allowed, only dashboard and protected routes are blocked
     const shouldBlockForMaintenance = isProtectedFromMaintenance(request);
+    console.log('[Middleware] Should block for maintenance:', shouldBlockForMaintenance);
 
     // Check if the current path is whitelisted (API routes, static files, etc)
     const isWhitelisted = MAINTENANCE_WHITELIST.some(path => pathname.startsWith(path));
+    console.log('[Middleware] Is whitelisted path:', isWhitelisted);
+    console.log('[Middleware] Current path is /maintenance:', pathname === '/maintenance');
 
     if (shouldBlockForMaintenance && !isWhitelisted && pathname !== '/maintenance') {
+      console.log('[Middleware] ⛔ Access should be blocked - Checking admin bypass...');
       // Check if user is an admin (if authenticated)
       try {
         const session = auth();
@@ -160,9 +184,14 @@ export default clerkMiddleware(async (auth, request) => {
       }
 
       // Redirect to maintenance page
+      console.log('[Middleware] 🔴 REDIRECTING TO MAINTENANCE PAGE');
       const maintenanceUrl = new URL('/maintenance', request.url);
       return NextResponse.redirect(maintenanceUrl);
+    } else {
+      console.log('[Middleware] ✅ Access allowed (whitelisted or maintenance page itself)');
     }
+  } else {
+    console.log('[Middleware] ✅ Maintenance mode OFF - Normal operation');
   }
 
   // Check if trying to access admin routes
