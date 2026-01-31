@@ -23,6 +23,7 @@ export default function UnderConstruction() {
     const router = useRouter()
     const [isChecking, setIsChecking] = useState(false)
     const hasSetupRef = useRef(false) // Use ref to persist without causing re-renders
+    const lastMaintenanceState = useRef<boolean | null>(null) // Track last state to avoid duplicate actions
 
     // Monitor maintenance mode - redirect to dashboard when it's turned off
     useEffect(() => {
@@ -55,6 +56,16 @@ export default function UnderConstruction() {
                     console.log('[MaintenanceRecovery] Maintenance mode changed:', payload)
                     if (payload.new && 'value' in payload.new) {
                         const isEnabled = payload.new.value as boolean
+                        console.log('[MaintenanceRecovery] New maintenance status:', isEnabled ? 'ON' : 'OFF')
+                        
+                        // Skip if this is the same state we already processed
+                        if (lastMaintenanceState.current === isEnabled) {
+                            console.log('[MaintenanceRecovery] State unchanged, ignoring duplicate event')
+                            return
+                        }
+                        
+                        lastMaintenanceState.current = isEnabled
+                        
                         if (!isEnabled) {
                             // Maintenance mode turned OFF - redirect to dashboard
                             console.log('[MaintenanceRecovery] Maintenance mode ended! Redirecting to dashboard')
@@ -71,6 +82,8 @@ export default function UnderConstruction() {
                                 console.log('[MaintenanceRecovery] 📅 Bypass valid until:', new Date(bypassUntil).toISOString());
                                 window.location.href = redirectUrl;
                             }, 1000)
+                        } else {
+                            console.log('[MaintenanceRecovery] Maintenance still ON - staying on page')
                         }
                     }
                 }
