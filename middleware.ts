@@ -38,35 +38,65 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.next();
   }
 
-  // Allow bypass if coming from maintenance page recovery (temporary 10-second window)
-  const recoveryToken = searchParams.get('_recovery');
-  const bypassUntil = searchParams.get('_bypass');
-  if (recoveryToken === 'true' && bypassUntil) {
-    const bypassTime = parseInt(bypassUntil);
+  // Check for recovery bypass cookie (set when leaving maintenance mode)
+  const cookies = request.cookies;
+  const bypassCookie = cookies.get('maintenance_bypass');
+  if (bypassCookie) {
+    const bypassTime = parseInt(bypassCookie.value);
     if (Date.now() < bypassTime) {
-      console.log('[Middleware] Recovery bypass active - allowing access');
+      console.log('[Middleware] Recovery bypass cookie active - allowing access');
       // Continue with normal auth flow but skip maintenance check
       if (!isPublicRoute(request)) {
         auth().protect();
       }
       return NextResponse.next();
+    } else {
+      // Cookie expired, clear it
+      const response = NextResponse.next();
+      response.cookies.delete('maintenance_bypass');
+    }
+  }
+
+  // Allow bypass via query param and SET cookie for subsequent requests
+  const recoveryToken = searchParams.get('_recovery');
+  const bypassUntil = searchParams.get('_bypass');
+  if (recoveryToken === 'true' && bypassUntil) {
+    const bypassTime = parseInt(bypassUntil);
+    if (Date.now() < bypassTime) {
+      console.log('[Middleware] Recovery bypass active - setting cookie and allowing access');
+      // Set cookie for 30 seconds to handle all subsequent requests
+      const response = NextResponse.next();
+      response.cookies.set('maintenance_bypass', bypassUntil, {
+        maxAge: 30, // 30 seconds
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/'
+      });
+      // Continue with normal auth flow but skip maintenance check
+      if (!isPublicRoute(request)) {
+        auth().protect();
+      }
+      return response;
     }
   }
 
   // Check if maintenance mode is enabled (from database for real-time updates)
   let maintenanceMode = false;
   try {
-    // IMPORTANT: Use maybeSingle() to avoid errors on missing rows
+    // IMPORTANT: Force fresh query with timestamp to avoid Edge caching
+    const timestamp = Date.now();
     const { data, error } = await supabase
       .from('maintenance_settings')
       .select('value')
       .eq('key', 'maintenance_mode')
+      .limit(1)
       .maybeSingle();
 
     if (!error && data) {
       maintenanceMode = data.value;
-    } else {
-      // Fallback to environment variable if database check fails
+    } else if (error) {
+      console.error('[Middleware] Error checking maintenance mode:', error);
+      // Fallback to environment variable
       maintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
     }
   } catch (error) {

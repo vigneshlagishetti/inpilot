@@ -63,8 +63,8 @@ export default function UnderConstruction() {
                             })
                             // Short delay for user to see the message, then redirect with bypass token
                             setTimeout(() => {
-                                // Add recovery token to bypass middleware check temporarily
-                                const bypassUntil = Date.now() + 10000; // 10 seconds
+                                // Add recovery token to bypass middleware check temporarily (30 seconds)
+                                const bypassUntil = Date.now() + 30000; // 30 seconds
                                 window.location.href = `/dashboard?_recovery=true&_bypass=${bypassUntil}`
                             }, 1000)
                         }
@@ -107,8 +107,8 @@ export default function UnderConstruction() {
             if (!data.enabled) {
                 console.log('[MaintenanceRecovery] Maintenance mode ended via polling')
                 // Clear interval before redirect to prevent further checks
-                // Add recovery token to bypass middleware check temporarily
-                const bypassUntil = Date.now() + 10000; // 10 seconds
+                // Add recovery token to bypass middleware check temporarily (30 seconds)
+                const bypassUntil = Date.now() + 30000; // 30 seconds
                 window.location.href = `/dashboard?_recovery=true&_bypass=${bypassUntil}`
             } else {
                 console.log('[MaintenanceRecovery] Still in maintenance mode')
