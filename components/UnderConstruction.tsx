@@ -52,9 +52,11 @@ export default function UnderConstruction() {
                                 title: "🎉 We're back!",
                                 description: "Maintenance is complete. Redirecting you now...",
                             })
-                            // Short delay for user to see the message
+                            // Short delay for user to see the message, then redirect with bypass token
                             setTimeout(() => {
-                                window.location.href = '/dashboard'
+                                // Add recovery token to bypass middleware check temporarily
+                                const bypassUntil = Date.now() + 10000; // 10 seconds
+                                window.location.href = `/dashboard?_recovery=true&_bypass=${bypassUntil}`
                             }, 1000)
                         }
                     }
@@ -93,7 +95,9 @@ export default function UnderConstruction() {
             if (!data.enabled) {
                 console.log('[MaintenanceRecovery] Maintenance mode ended via polling')
                 // Clear interval before redirect to prevent further checks
-                window.location.href = '/dashboard'
+                // Add recovery token to bypass middleware check temporarily
+                const bypassUntil = Date.now() + 10000; // 10 seconds
+                window.location.href = `/dashboard?_recovery=true&_bypass=${bypassUntil}`
             } else {
                 console.log('[MaintenanceRecovery] Still in maintenance mode')
             }
