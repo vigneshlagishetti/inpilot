@@ -37,9 +37,11 @@ export async function GET() {
             },
             {
                 headers: {
-                    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0',
                     'Pragma': 'no-cache',
                     'Expires': '0',
+                    'CDN-Cache-Control': 'no-store',
+                    'Vercel-CDN-Cache-Control': 'no-store',
                 }
             }
         );
@@ -136,11 +138,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        return NextResponse.json({
-            success: true,
-            maintenanceMode: enabled,
-            message: `${result.message}. Changes are effective immediately - no restart needed!`,
-        });
+        return NextResponse.json(
+            {
+                success: true,
+                maintenanceMode: enabled,
+                message: `${result.message}. Changes are effective immediately - no restart needed!`,
+            },
+            {
+                headers: {
+                    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0, s-maxage=0',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
+                    'CDN-Cache-Control': 'no-store',
+                    'Vercel-CDN-Cache-Control': 'no-store',
+                }
+            }
+        );
     } catch (error) {
         console.error('Error toggling maintenance mode:', error);
         return NextResponse.json(

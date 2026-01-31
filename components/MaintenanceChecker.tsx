@@ -95,7 +95,8 @@ export default function MaintenanceChecker() {
             const response = await fetch(`/api/maintenance/status?t=${Date.now()}`, {
                 cache: 'no-store',
                 headers: {
-                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+                    'Pragma': 'no-cache',
                 }
             });
             const data = await response.json();

@@ -44,11 +44,12 @@ export default function UnderConstruction() {
                         const isEnabled = payload.new.value as boolean
                         if (!isEnabled) {
                             // Maintenance mode turned OFF - redirect to dashboard
-                            console.log('[MaintenanceRecovery] Redirecting to dashboard')
+                            console.log('[MaintenanceRecovery] Maintenance mode ended! Redirecting to dashboard')
                             toast({
-                                title: "We're back!",
-                                description: "Maintenance is complete. Redirecting...",
+                                title: "🎉 We're back!",
+                                description: "Maintenance is complete. Redirecting you now...",
                             })
+                            // Short delay for user to see the message
                             setTimeout(() => {
                                 window.location.href = '/dashboard'
                             }, 1000)
@@ -219,6 +220,33 @@ export default function UnderConstruction() {
                 </SignedIn>
 
                 {/* Debug Info for troubleshooting */}
+
+            {/* Force Refresh Button - Helps bypass cache issues */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.75, duration: 0.6 }}
+                className="mb-6 text-center"
+            >
+                <Button
+                    onClick={() => {
+                        // Clear all caches and force a hard reload
+                        if ('caches' in window) {
+                            caches.keys().then(names => {
+                                names.forEach(name => caches.delete(name));
+                            });
+                        }
+                        // Force reload from server, bypass all caches
+                        window.location.href = window.location.href + '?nocache=' + Date.now();
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                    <Sparkles className="w-3 h-3" />
+                    Still seeing this? Force Refresh
+                </Button>
+            </motion.div>
 
             {/* Login Options for users who are logged out */}
             <SignedOut>
