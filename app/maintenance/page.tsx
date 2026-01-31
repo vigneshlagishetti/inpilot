@@ -10,6 +10,10 @@ export const metadata: Metadata = {
     },
 }
 
+// Force dynamic rendering to prevent caching issues
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function MaintenancePage() {
     return <UnderConstruction />
 }

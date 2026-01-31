@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -22,22 +22,23 @@ export default function UnderConstruction() {
     const { signOut } = useClerk()
     const router = useRouter()
     const [isChecking, setIsChecking] = useState(false)
-    const [hasSetup, setHasSetup] = useState(false)
+    const hasSetupRef = useRef(false) // Use ref to persist without causing re-renders
 
     // Monitor maintenance mode - redirect to dashboard when it's turned off
     useEffect(() => {
-        // Prevent multiple setups
-        if (hasSetup) {
+        // Prevent multiple setups using ref
+        if (hasSetupRef.current) {
             console.log('[MaintenanceRecovery] Already setup, skipping');
             return;
         }
         
-        setHasSetup(true);
+        hasSetupRef.current = true; // Mark as setup
+        console.log('[MaintenanceRecovery] Setting up subscriptions');
         
         // Initial check with slight delay to avoid race conditions
         const initialCheckTimer = setTimeout(() => {
             checkMaintenanceMode()
-        }, 1000)
+        }, 2000) // Increased to 2 seconds to ensure page is fully loaded
 
         // Subscribe to real-time changes
         const channel = supabase
@@ -75,8 +76,8 @@ export default function UnderConstruction() {
                 console.log('[MaintenanceRecovery] Subscription status:', status)
             })
 
-        // Fallback polling every 5 seconds
-        const pollInterval = setInterval(checkMaintenanceMode, 5000)
+        // Fallback polling every 10 seconds (increased from 5 to reduce requests)
+        const pollInterval = setInterval(checkMaintenanceMode, 10000)
 
         return () => {
             console.log('[MaintenanceRecovery] Cleaning up subscriptions');
