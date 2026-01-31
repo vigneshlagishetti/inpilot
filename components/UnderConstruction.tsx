@@ -21,11 +21,14 @@ export default function UnderConstruction() {
     const { toast } = useToast()
     const { signOut } = useClerk()
     const router = useRouter()
+    const [isChecking, setIsChecking] = useState(false)
 
     // Monitor maintenance mode - redirect to dashboard when it's turned off
     useEffect(() => {
-        // Initial check
-        checkMaintenanceMode()
+        // Initial check with slight delay to avoid race conditions
+        setTimeout(() => {
+            checkMaintenanceMode()
+        }, 1000)
 
         // Subscribe to real-time changes
         const channel = supabase
@@ -71,7 +74,14 @@ export default function UnderConstruction() {
     }, [router, toast])
 
     async function checkMaintenanceMode() {
+        // Prevent multiple simultaneous checks
+        if (isChecking) {
+            console.log('[MaintenanceRecovery] Check already in progress, skipping');
+            return;
+        }
+
         try {
+            setIsChecking(true);
             const response = await fetch(`/api/maintenance/status?t=${Date.now()}`, {
                 cache: 'no-store',
                 headers: {
@@ -82,10 +92,15 @@ export default function UnderConstruction() {
             
             if (!data.enabled) {
                 console.log('[MaintenanceRecovery] Maintenance mode ended via polling')
+                // Clear interval before redirect to prevent further checks
                 window.location.href = '/dashboard'
+            } else {
+                console.log('[MaintenanceRecovery] Still in maintenance mode')
             }
         } catch (error) {
             console.error('[MaintenanceRecovery] Error checking maintenance mode:', error)
+        } finally {
+            setIsChecking(false);
         }
     }
 

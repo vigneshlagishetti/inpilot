@@ -32,6 +32,13 @@ const supabase = createClient(
 export default clerkMiddleware(async (auth, request) => {
   const { pathname } = request.nextUrl;
 
+  // CRITICAL: If already on maintenance page, allow it through immediately
+  // This prevents redirect loops
+  if (pathname === '/maintenance') {
+    console.log('[Middleware] User on /maintenance page - allowing access');
+    return;
+  }
+
   // Check if maintenance mode is enabled (from database for real-time updates)
   let maintenanceMode = false;
   try {

@@ -19,6 +19,12 @@ export default function MaintenanceChecker() {
     const router = useRouter();
     const { user } = useUser();
     const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+    const [currentPath, setCurrentPath] = useState('');
+
+    // Track current path to prevent redirect loops
+    useEffect(() => {
+        setCurrentPath(window.location.pathname);
+    }, []);
 
     // Check if user is admin
     useEffect(() => {
@@ -61,7 +67,8 @@ export default function MaintenanceChecker() {
                     console.log('[MaintenanceChecker] Maintenance mode changed:', payload);
                     if (payload.new && 'value' in payload.new) {
                         const isEnabled = payload.new.value as boolean;
-                        if (isEnabled && !isAdmin) {
+                        // Only redirect if NOT already on maintenance page
+                        if (isEnabled && !isAdmin && currentPath !== '/maintenance') {
                             // Maintenance mode turned ON and user is NOT admin - redirect
                             console.log('[MaintenanceChecker] Redirecting to maintenance page (non-admin user)');
                             window.location.href = '/maintenance';
@@ -89,6 +96,12 @@ export default function MaintenanceChecker() {
             // Skip check for admins
             if (isAdmin) {
                 console.log('[MaintenanceChecker] Admin user - skipping maintenance check');
+                return;
+            }
+
+            // Skip check if already on maintenance page (prevent redirect loop)
+            if (currentPath === '/maintenance') {
+                console.log('[MaintenanceChecker] Already on maintenance page - skipping check');
                 return;
             }
 
