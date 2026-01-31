@@ -22,11 +22,20 @@ export default function UnderConstruction() {
     const { signOut } = useClerk()
     const router = useRouter()
     const [isChecking, setIsChecking] = useState(false)
+    const [hasSetup, setHasSetup] = useState(false)
 
     // Monitor maintenance mode - redirect to dashboard when it's turned off
     useEffect(() => {
+        // Prevent multiple setups
+        if (hasSetup) {
+            console.log('[MaintenanceRecovery] Already setup, skipping');
+            return;
+        }
+        
+        setHasSetup(true);
+        
         // Initial check with slight delay to avoid race conditions
-        setTimeout(() => {
+        const initialCheckTimer = setTimeout(() => {
             checkMaintenanceMode()
         }, 1000)
 
@@ -70,10 +79,13 @@ export default function UnderConstruction() {
         const pollInterval = setInterval(checkMaintenanceMode, 5000)
 
         return () => {
-            supabase.removeChannel(channel)
-            clearInterval(pollInterval)
+            console.log('[MaintenanceRecovery] Cleaning up subscriptions');
+            clearTimeout(initialCheckTimer);
+            supabase.removeChannel(channel);
+            clearInterval(pollInterval);
         }
-    }, [router, toast])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []) // Empty dependency array - only run once on mount
 
     async function checkMaintenanceMode() {
         // Prevent multiple simultaneous checks
