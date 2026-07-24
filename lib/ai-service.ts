@@ -179,21 +179,38 @@ FOR CODING QUESTIONS ONLY (otherwise write "N/A" for all sections below):
     console.log('Generating answer for question:', question)
     const startTime = Date.now()
     
-    const completion = await openai.chat.completions.create({
-      model: 'llama-3.1-8b-instant',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: question },
-      ],
-      temperature: 0.3,
-      max_tokens: 1800, // Optimized: Reduced slightly for faster responses
-      top_p: 0.9,
-      stream: false, // Ensure non-streaming for consistent timing
-    })
+    const makeRequest = async (): Promise<string> => {
+      const completion = await openai.chat.completions.create({
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: question },
+        ],
+        temperature: 0.3,
+        max_tokens: 1800,
+        top_p: 0.9,
+        stream: false,
+      })
+      return completion.choices[0]?.message?.content || ''
+    }
+
+    let response: string
+    try {
+      response = await makeRequest()
+    } catch (err: any) {
+      // Auto-retry once on rate limit (429) — wait for retry-after header
+      if (err?.status === 429) {
+        const retryAfter = parseInt(err?.headers?.['retry-after'] || '30', 10)
+        console.warn(`[AI] Rate limited. Retrying after ${retryAfter}s...`)
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
+        response = await makeRequest()
+      } else {
+        throw err
+      }
+    }
 
     const endTime = Date.now()
     console.log(`Answer generated successfully in ${endTime - startTime}ms`)
-    const response = completion.choices[0]?.message?.content || ''
     return parseResponse(response)
   } catch (error: any) {
     console.error('Error generating answer:', error)

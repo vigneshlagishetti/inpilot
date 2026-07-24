@@ -82,6 +82,7 @@ export default function DashboardPage() {
   const answerSectionRef = useRef<HTMLDivElement>(null)
   const recordingSectionRef = useRef<HTMLDivElement>(null)
   const voiceRecorderRef = useRef<any>(null)
+  const isProcessingRef = useRef<boolean>(false) // Prevents duplicate API calls
 
   // Load saved data from localStorage on mount
   useEffect(() => {
@@ -548,6 +549,13 @@ export default function DashboardPage() {
   }
 
   const handleTranscription = async (transcription: string) => {
+    // Prevent duplicate calls (VoiceRecorder sometimes fires twice)
+    if (isProcessingRef.current) {
+      console.log('⚠️ Duplicate transcription call ignored:', transcription)
+      return
+    }
+    isProcessingRef.current = true
+
     setCurrentQuestion(transcription)
     setIsLoading(true)
 
@@ -684,6 +692,7 @@ export default function DashboardPage() {
       })
     } finally {
       setIsLoading(false)
+      isProcessingRef.current = false // Release lock so next question can be processed
     }
   }
 
