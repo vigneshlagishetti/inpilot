@@ -203,6 +203,10 @@ FOR CODING QUESTIONS ONLY (otherwise write "N/A" for all sections below):
 }
 
 function parseResponse(response: string): AnswerResponse {
+  console.log('=== PARSE RESPONSE ===')
+  console.log('Raw response length:', response.length)
+  console.log('Raw response preview:', response.substring(0, 300))
+
   const sections = {
     directAnswer: extractSection(response, 'DIRECT_ANSWER'),
     detailedExplanation: extractSection(response, 'DETAILED_EXPLANATION'),
@@ -219,9 +223,31 @@ function parseResponse(response: string): AnswerResponse {
     optimalWhy: extractSection(response, 'OPTIMAL_WHY'),
   }
 
+  console.log('Parsed directAnswer:', sections.directAnswer?.substring(0, 100) || 'EMPTY')
+  console.log('Parsed detailedExplanation:', sections.detailedExplanation?.substring(0, 100) || 'EMPTY')
+
+  // Fallback: if the model didn't use markers at all, use the raw response as the direct answer
+  // Split it roughly in half between direct answer and detailed explanation
+  let directAnswer = sections.directAnswer
+  let detailedExplanation = sections.detailedExplanation
+
+  if (!directAnswer && response.trim().length > 0) {
+    console.log('No markers found — using raw response as fallback')
+    const paragraphs = response.trim().split(/\n\n+/)
+    if (paragraphs.length >= 2) {
+      // First ~40% of paragraphs = direct answer, rest = detailed explanation
+      const splitAt = Math.max(1, Math.ceil(paragraphs.length * 0.4))
+      directAnswer = paragraphs.slice(0, splitAt).join('\n\n')
+      detailedExplanation = paragraphs.slice(splitAt).join('\n\n') || directAnswer
+    } else {
+      directAnswer = response.trim()
+      detailedExplanation = response.trim()
+    }
+  }
+
   return {
-    directAnswer: sections.directAnswer || 'Please ask your question again',
-    detailedExplanation: sections.detailedExplanation || 'No detailed explanation available',
+    directAnswer: directAnswer || 'Please ask your question again',
+    detailedExplanation: detailedExplanation || directAnswer || 'No detailed explanation available',
     example: sections.example !== 'N/A' && sections.example ? sections.example : undefined,
     bruteForceApproach: sections.bruteForceApproach !== 'N/A' && sections.bruteForceApproach ? sections.bruteForceApproach : undefined,
     bruteForceCode: sections.bruteForceCode !== 'N/A' && sections.bruteForceCode ? sections.bruteForceCode : undefined,
@@ -237,7 +263,16 @@ function parseResponse(response: string): AnswerResponse {
 }
 
 function extractSection(text: string, sectionName: string): string {
+  // Try exact marker format: ---SECTION_NAME---
   const regex = new RegExp(`---${sectionName}---\\s*([\\s\\S]*?)(?=---[A-Z_]+---|$)`, 'i')
   const match = text.match(regex)
-  return match ? match[1].trim() : ''
+  if (match) return match[1].trim()
+
+  // Try alternate formats the model sometimes generates: **SECTION NAME** or ## SECTION NAME
+  const altName = sectionName.replace(/_/g, '[_ ]')
+  const altRegex = new RegExp(`(?:\\*\\*|##\\s*)${altName}(?:\\*\\*)?\\s*:?\\s*([\\s\\S]*?)(?=(?:\\*\\*|##\\s*)[A-Z]|$)`, 'i')
+  const altMatch = text.match(altRegex)
+  if (altMatch) return altMatch[1].trim()
+
+  return ''
 }

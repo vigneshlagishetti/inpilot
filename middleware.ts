@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 import { MAINTENANCE_WHITELIST, ADMIN_EMAILS, ADMIN_IDS } from "./lib/maintenance-config";
 import { createClient } from '@supabase/supabase-js';
 
-// Force recompile: 2026-01-27T13:58:35+05:30
-
 const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
@@ -23,11 +21,62 @@ const isProtectedFromMaintenance = createRouteMatcher([
   '/test-rating(.*)',
 ]);
 
-// Create Supabase client for middleware
+// Create Supabase client for middleware (with short timeout to avoid blocking requests)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    global: {
+      fetch: (url, options) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 3000); // 3s timeout
+        return fetch(url, { ...options, signal: controller.signal })
+          .finally(() => clearTimeout(timer));
+      }
+    }
+  }
 );
+
+// ── In-memory cache for maintenance mode ──────────────────────────────────────
+// Avoids hitting Supabase on every single request (very expensive when DB is down)
+let maintenanceModeCache: { value: boolean; expiresAt: number } | null = null;
+const CACHE_TTL_MS = 30_000; // Re-check DB every 30 seconds
+
+async function getMaintenanceMode(): Promise<boolean> {
+  const now = Date.now();
+
+  // Return cached value if still fresh
+  if (maintenanceModeCache && now < maintenanceModeCache.expiresAt) {
+    console.log('[Middleware] ✅ Maintenance mode from cache:', maintenanceModeCache.value);
+    return maintenanceModeCache.value;
+  }
+
+  console.log('[Middleware] 🔍 Checking database for maintenance status...');
+  try {
+    const { data, error } = await supabase
+      .from('maintenance_settings')
+      .select('value')
+      .eq('key', 'maintenance_mode')
+      .limit(1)
+      .maybeSingle();
+
+    if (!error && data) {
+      maintenanceModeCache = { value: data.value, expiresAt: now + CACHE_TTL_MS };
+      console.log('[Middleware] 📊 Database says maintenance mode:', data.value);
+      return data.value;
+    } else if (error) {
+      console.error('[Middleware] ❌ Error checking maintenance mode:', error);
+    }
+  } catch (error) {
+    console.error('[Middleware] ❌ Exception checking maintenance mode:', error);
+  }
+
+  // Fallback to env var and cache for a shorter time (5s) so we retry sooner
+  const fallback = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
+  maintenanceModeCache = { value: fallback, expiresAt: now + 5_000 };
+  console.log('[Middleware] 🔄 Falling back to env var:', fallback);
+  return fallback;
+}
 
 export default clerkMiddleware(async (auth, request) => {
   const { pathname, searchParams } = request.nextUrl;
@@ -41,36 +90,20 @@ export default clerkMiddleware(async (auth, request) => {
   // Check for recovery bypass cookie (set when leaving maintenance mode)
   const cookies = request.cookies;
   const bypassCookie = cookies.get('maintenance_bypass');
-  
-  console.log('[Middleware] === MAINTENANCE CHECK START ===');
-  console.log('[Middleware] Path:', pathname);
-  console.log('[Middleware] Bypass cookie exists:', !!bypassCookie);
-  if (bypassCookie) {
-    console.log('[Middleware] Bypass cookie value:', bypassCookie.value);
-    console.log('[Middleware] Current timestamp:', Date.now());
-  }
-  
+
   if (bypassCookie) {
     const bypassTime = parseInt(bypassCookie.value);
-    const timeRemaining = bypassTime - Date.now();
-    console.log('[Middleware] Bypass expiry:', bypassTime);
-    console.log('[Middleware] Time remaining (ms):', timeRemaining);
-    
     if (Date.now() < bypassTime) {
       console.log('[Middleware] ✅ BYPASS ACTIVE - Allowing request');
-      // Continue with normal auth flow but skip maintenance check
       if (!isPublicRoute(request)) {
         auth().protect();
       }
       return NextResponse.next();
     } else {
-      console.log('[Middleware] ⚠️ Bypass cookie expired - Clearing and checking database');
       // Cookie expired, clear it
       const response = NextResponse.next();
       response.cookies.delete('maintenance_bypass');
     }
-  } else {
-    console.log('[Middleware] No bypass cookie - Proceeding to database check');
   }
 
   // Allow bypass via query param and SET cookie for subsequent requests
@@ -80,7 +113,6 @@ export default clerkMiddleware(async (auth, request) => {
     const bypassTime = parseInt(bypassUntil);
     if (Date.now() < bypassTime) {
       console.log('[Middleware] Recovery bypass active - setting cookie and allowing access');
-      // Set cookie for 30 seconds to handle all subsequent requests
       const response = NextResponse.next();
       response.cookies.set('maintenance_bypass', bypassUntil, {
         maxAge: 30, // 30 seconds
@@ -88,7 +120,6 @@ export default clerkMiddleware(async (auth, request) => {
         sameSite: 'lax',
         path: '/'
       });
-      // Continue with normal auth flow but skip maintenance check
       if (!isPublicRoute(request)) {
         auth().protect();
       }
@@ -96,33 +127,8 @@ export default clerkMiddleware(async (auth, request) => {
     }
   }
 
-  // Check if maintenance mode is enabled (from database for real-time updates)
-  console.log('[Middleware] 🔍 Checking database for maintenance status...');
-  let maintenanceMode = false;
-  try {
-    // CRITICAL: Force completely fresh query - no caching at any level
-    const { data, error } = await supabase
-      .from('maintenance_settings')
-      .select('value')
-      .eq('key', 'maintenance_mode')
-      .limit(1)
-      .maybeSingle();
-
-    if (!error && data) {
-      maintenanceMode = data.value;
-      console.log('[Middleware] 📊 Database says maintenance mode:', maintenanceMode);
-    } else if (error) {
-      console.error('[Middleware] ❌ Error checking maintenance mode:', error);
-      // Fallback to environment variable
-      maintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
-      console.log('[Middleware] 🔄 Falling back to env var:', maintenanceMode);
-    }
-  } catch (error) {
-    console.error('[Middleware] ❌ Exception checking maintenance mode:', error);
-    // Fallback to environment variable
-    maintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
-    console.log('[Middleware] 🔄 Falling back to env var:', maintenanceMode);
-  }
+  // Check maintenance mode (cached — only hits DB every 30 seconds)
+  const maintenanceMode = await getMaintenanceMode();
 
   if (maintenanceMode) {
     console.log('[Middleware] 🚧 Maintenance mode is ON - Evaluating access...');
