@@ -18,7 +18,6 @@ const isAdminRoute = createRouteMatcher([
 // Landing page (/) is NOT blocked - users can see it even during maintenance
 const isProtectedFromMaintenance = createRouteMatcher([
   '/dashboard(.*)',
-  '/test-rating(.*)',
 ]);
 
 // Create Supabase client for middleware (with short timeout to avoid blocking requests)
