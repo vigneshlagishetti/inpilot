@@ -1001,9 +1001,9 @@ export default function DashboardPage() {
 
           {/* Interview Tab */}
           <TabsContent value="interview" className="mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-              {/* Left Panel - Voice Recorder */}
-              <div className="lg:col-span-1 space-y-4 sm:space-y-6" ref={recordingSectionRef}>
+            <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+              {/* Voice Recorder (Order 1 on mobile, Col 1 Row 1 on desktop) */}
+              <div className="order-1 lg:col-span-1 lg:col-start-1 lg:row-start-1" ref={recordingSectionRef}>
                 {/* Voice Recorder */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -1041,9 +1041,11 @@ export default function DashboardPage() {
                     </CardContent>
                   </Card>
                 </motion.div>
+              </div>
 
-                {/* History */}
-                {history.length > 0 && (
+              {/* History (Order 3 on mobile, Col 1 Row 2 on desktop) */}
+              {history.length > 0 && (
+                <div className="order-3 lg:col-span-1 lg:col-start-1 lg:row-start-2">
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1120,11 +1122,11 @@ export default function DashboardPage() {
                       </CardContent>
                     </Card>
                   </motion.div>
-                )}
-              </div>
+                </div>
+              )}
 
-              {/* Right Panel - Answer Display */}
-              <div className="lg:col-span-2" ref={answerSectionRef}>
+              {/* Answer Display (Order 2 on mobile, Col 2-3 on desktop) */}
+              <div className="order-2 lg:col-span-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 space-y-4 sm:space-y-6" ref={answerSectionRef}>
                 {isLoading ? (
                   <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl flex items-center justify-center min-h-[300px] sm:min-h-[400px] relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 animate-pulse"></div>

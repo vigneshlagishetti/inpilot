@@ -35,11 +35,9 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   const streamRef = useRef<MediaStream | null>(null)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  
+
   const audioChunksRef = useRef<Blob[]>([])
   const isRecordingRef = useRef(false)
-  const autoModeRef = useRef(autoStart)
-  const silenceStartRef = useRef<number | null>(null)
   const isMobileRef = useRef(false)
   const isStartingRef = useRef(false)
   const wakeLockRef = useRef<any>(null)
@@ -47,8 +45,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   const restartingRef = useRef(false)
   const hasSpokenRef = useRef(false)
   const lastSpeechTimeRef = useRef<number | null>(null)
-  const lastSpeechTextRef = useRef<string>('')
-  
+
   // To avoid duplicate submissions
   const hasSubmittedRef = useRef(false)
 
@@ -67,7 +64,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     isMobileRef.current = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent
     )
-    
+
     // Pre-request mic permission on mobile
     if (isMobileRef.current && navigator.mediaDevices?.getUserMedia) {
       navigator.mediaDevices.getUserMedia({ audio: true })
@@ -88,10 +85,10 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       recognition.continuous = true
       recognition.interimResults = true
       recognition.lang = 'en-US'
-      
+
       recognition.onresult = (event: any) => {
         if (!isRecordingRef.current || hasSubmittedRef.current) return
-        
+
         let final = ''
         let interim = ''
         for (let i = 0; i < event.results.length; i++) {
@@ -102,22 +99,16 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
             interim += text
           }
         }
-        
+
+        // Remove duplicate words using regex for better UI appearance
         const cleanedLiveText = (final + interim).trim().replace(/\b(\w+)( \1\b)+/gi, '$1')
         setInterimTranscript(cleanedLiveText)
-        
-        // Normalize text to purely alphanumeric to prevent punctuation/capitalization changes from resetting the timer
-        const normalizedText = cleanedLiveText.toLowerCase().replace(/[^a-z0-9]/g, '')
-        
+
         // Fallback: If Web Speech API heard something, the user has definitely spoken
-        if (normalizedText.length > 0) {
+        if (cleanedLiveText.length > 0) {
           if (!hasSpokenRef.current) hasSpokenRef.current = true
-          
-          // Only reset the silence timer if the recognized words actually changed
-          if (normalizedText !== lastSpeechTextRef.current) {
-            lastSpeechTimeRef.current = Date.now()
-            lastSpeechTextRef.current = normalizedText
-          }
+          // Update last speech time to prevent premature cutoff while Web Speech API is still processing
+          lastSpeechTimeRef.current = Date.now()
         }
       }
 
@@ -147,7 +138,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     setTimeout(() => {
       if (isRecordingRef.current && !hasSubmittedRef.current) {
         try { recognition.start() } catch (e) {
-          setTimeout(() => { try { recognition.start() } catch (_) {} }, 250)
+          setTimeout(() => { try { recognition.start() } catch (_) { } }, 250)
         }
       }
       restartingRef.current = false
@@ -163,14 +154,14 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       mediaRecorderRef.current.stop()
     }
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop() } catch (_) {}
+      try { recognitionRef.current.stop() } catch (_) { }
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-      audioContextRef.current.close().catch(() => {})
+      audioContextRef.current.close().catch(() => { })
       audioContextRef.current = null
     }
     analyserRef.current = null
@@ -223,27 +214,26 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     let voiceSum = 0
     const startBin = 3
     const endBin = 33
-    
+
     for (let i = startBin; i <= endBin && i < bufferLength; i++) {
       voiceSum += dataArray[i]
     }
     const voiceAverage = voiceSum / (endBin - startBin + 1)
 
-    // Increase threshold massively to 100 to completely ignore fans/AC/background noise.
-    // Human speech usually spikes above 120-200. Background noise is typically 10-60.
-    // On mobile devices with AGC, the levels are lower, so we use a lower threshold.
-    const silenceThreshold = isMobileRef.current ? 40 : 100 
+    // Increase threshold significantly to ignore fans/AC/background noise.
+    // On mobile devices with AGC, the levels are extremely low, so we use a very safe threshold of 15.
+    const silenceThreshold = isMobileRef.current ? 15 : 50
     const now = Date.now()
 
-    // We use the raw audio VAD as the primary source of truth for silence detection
-    // because Web Speech API can randomly pause or ignore soft speech/breathing.
+    // If Web Speech API is working, it already updates lastSpeechTimeRef in onresult.
+    // We only use this raw audio VAD as a fallback for loud sounds or browsers without Speech API.
     if (voiceAverage >= silenceThreshold) {
       lastSpeechTimeRef.current = now
       if (!hasSpokenRef.current) {
         hasSpokenRef.current = true // User has started speaking
       }
-    } 
-    
+    }
+
     // Check if we should stop
     if (lastSpeechTimeRef.current && hasSpokenRef.current) {
       const silenceDuration = now - lastSpeechTimeRef.current
@@ -290,12 +280,12 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
         setInterimTranscript('') // Clear the live native text
         hasSubmittedRef.current = true
         onTranscriptionCompleteRef.current(text)
-        
+
         toast({
           title: detectQuestion(text) ? 'Question Detected' : 'Speech Captured',
           description: 'Generating answer...',
         })
-        
+
         if (autoModeRef.current) {
           setIsPaused(true)
         }
@@ -325,13 +315,19 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     hasSubmittedRef.current = false
     hasSpokenRef.current = false
     lastSpeechTimeRef.current = null
-    lastSpeechTextRef.current = ''
     setTranscript('')
     setInterimTranscript('')
     setConfidence(null)
     setIsPaused(false)
     silenceStartRef.current = null
     cleanupAudio()
+
+    // Start Native Speech Recognition IMMEDIATELY to preserve user gesture token on mobile browsers
+    // (if we wait for getUserMedia, the gesture token expires and it throws not-allowed)
+    if (recognitionRef.current) {
+      restartingRef.current = false
+      try { recognitionRef.current.start() } catch (e) { console.warn('Recognition start failed:', e) }
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -343,7 +339,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
         }
       })
       streamRef.current = stream
-      
+
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
       audioChunksRef.current = []
@@ -359,19 +355,14 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
         if (audioChunksRef.current.length > 0 && !hasSubmittedRef.current) {
           const mimeType = mediaRecorder.mimeType || 'audio/webm'
           const fileExtension = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm'
-          
-          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType }) 
+
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
           processAudio(audioBlob, `audio.${fileExtension}`)
         }
       }
 
       // Setup audio analysis for silence detection
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-      
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume().catch(() => console.warn('Could not resume audioContext'))
-      }
-      
       audioContextRef.current = audioContext
       const analyser = audioContext.createAnalyser()
       analyserRef.current = analyser
@@ -379,13 +370,13 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       analyser.minDecibels = -70
       analyser.maxDecibels = -10
       analyser.smoothingTimeConstant = 0.8
-      
+
       const source = audioContext.createMediaStreamSource(stream)
       source.connect(analyser)
 
       // Start MediaRecorder (Whisper backend)
       mediaRecorder.start()
-      
+
       // Haptic feedback & Screen Wake Lock for mobile
       if (typeof navigator !== 'undefined') {
         if ('vibrate' in navigator) {
@@ -397,17 +388,10 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
             .catch(() => {}) // Ignore if not allowed or supported
         }
       }
-      
-      // Start Native Speech Recognition (Live UI feedback)
-      if (recognitionRef.current) {
-        restartingRef.current = false
-        try { recognitionRef.current.start() } catch (e) {}
-      }
 
       setIsRecording(true)
-      isRecordingRef.current = true
       onRecordingStateChange(true)
-      
+
       if (!autoModeRef.current) {
         toast({
           title: 'Recording Started',
@@ -424,7 +408,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       console.error('[VoiceRecorder] Could not start:', error)
       toast({
         title: 'Error',
-        description: 'Could not start recording. Please tap the microphone manually and check permissions.',
+        description: 'Could not start recording. Check microphone permissions.',
         variant: 'destructive',
       })
       setIsRecording(false)
@@ -437,18 +421,17 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   // ── Stop recording ──────────────────────────────────────────────────────────
   const stopRecording = useCallback((submit: boolean = true) => {
     if (!isRecordingRef.current) return
-    
+
     setIsRecording(false)
-    isRecordingRef.current = false
     onRecordingStateChange(false)
-    
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
+
+    if (pollingIntervalRef.current) {
+      clearTimeout(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
     }
 
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop() } catch (_) {}
+      try { recognitionRef.current.stop() } catch (_) { }
     }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -460,11 +443,6 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
-    }
-    
-    // Haptic feedback for stop
-    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-      navigator.vibrate([50, 100, 50])
     }
   }, [onRecordingStateChange])
 
@@ -570,7 +548,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
             <span className={`w-2 h-2 rounded-full transition-colors duration-200 ${autoMode
               ? 'bg-green-500'
               : 'bg-gray-400'
-            }`} />
+              }`} />
           </span>
         </Button>
 
@@ -675,18 +653,17 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
                     {transcript ? 'Final Transcript:' : 'Live Transcript (Web Speech API):'}
                   </p>
                   {confidence && (
-                    <div className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${
-                      confidence.score >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                      confidence.score >= 50 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                    }`}>
+                    <div className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${confidence.score >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                        confidence.score >= 50 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      }`}>
                       Confidence: {confidence.score}% {confidence.fillerCount > 0 && `(${confidence.fillerCount} fillers)`}
                     </div>
                   )}
                 </div>
-                
+
                 {transcript ? (
-                  <div 
+                  <div
                     className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: confidence?.highlightedHtml || transcript }}
                   />
