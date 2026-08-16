@@ -791,7 +791,7 @@ export default function DashboardPage() {
         } else {
           if (savedAnswerMsg) {
             savedId = savedAnswerMsg.id
-            setCurrentMessageId(savedId)
+            setCurrentMessageId(savedId ?? null)
           }
         }
       }
