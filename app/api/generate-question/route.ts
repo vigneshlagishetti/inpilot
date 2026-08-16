@@ -14,15 +14,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { resumeContent, jobRole } = await request.json()
+    const { resumeContent, jobRole, customInstructions, projectContext, stressMode } = await request.json()
 
-    const systemPrompt = `You are an expert technical interviewer.
+    let systemPrompt = `You are an expert technical interviewer.
 Generate a realistic interview question for a candidate.
 Candidate's Target Role: ${jobRole || 'Software Engineer'}
 Candidate's Resume Context:
 ${resumeContent || 'None provided.'}
+${projectContext ? `\nProjects Context:\n${projectContext}` : ''}
+${customInstructions ? `\nCustom Instructions:\n${customInstructions}` : ''}`
 
-Provide exactly ONE clear interview question. Output ONLY the question text, no conversational filler or quotes.`;
+    if (stressMode) {
+      systemPrompt += `\n\nSTRESS TEST MODE ACTIVE: You are an extremely rigorous, demanding, and uncompromising technical interviewer. Ask a highly complex, multi-layered question focusing on extreme edge cases, deep technical constraints, and scalability failures. Be direct, aggressive, and DO NOT be polite. Ask a brutal curveball.`
+    }
+
+    systemPrompt += `\n\nProvide exactly ONE clear interview question. Output ONLY the question text, no conversational filler or quotes.`
 
     const response = await openai.chat.completions.create({
       model: 'llama-3.1-8b-instant',

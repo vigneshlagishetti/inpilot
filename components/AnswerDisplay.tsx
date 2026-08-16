@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Code, Lightbulb, BookOpen, Copy, Check, Clock, HardDrive, Zap, MessageCircle } from 'lucide-react'
+import { CheckCircle2, Code, Lightbulb, BookOpen, Copy, Check, Clock, HardDrive, Zap, MessageCircle, Share2 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useToast } from '@/components/ui/use-toast'
 
 interface AnswerDisplayProps {
+  messageId?: string
   question: string
   directAnswer: string
   detailedExplanation: string
@@ -24,6 +26,12 @@ interface AnswerDisplayProps {
   followUps?: string[]
   onFollowUpClick?: (question: string) => void
   generationTime?: number | null
+  fluencyData?: {
+    score: number
+    fillerCount: number
+    totalWords: number
+    fillerBreakdown: Record<string, number>
+  }
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -51,6 +59,43 @@ function CopyButton({ text }: { text: string }) {
         <>
           <Copy className="w-4 h-4" />
           Copy Code
+        </>
+      )}
+    </Button>
+  )
+}
+
+function ShareButton({ messageId }: { messageId: string }) {
+  const [shared, setShared] = useState(false)
+  const { toast } = useToast()
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/share/${messageId}`
+    navigator.clipboard.writeText(url)
+    setShared(true)
+    toast({
+      title: 'Link Copied!',
+      description: 'You can now share this mock interview segment with your mentor.',
+    })
+    setTimeout(() => setShared(false), 2000)
+  }
+
+  return (
+    <Button
+      onClick={handleShare}
+      size="sm"
+      variant="secondary"
+      className="gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900/50 dark:hover:bg-indigo-900/70 dark:text-indigo-300"
+    >
+      {shared ? (
+        <>
+          <Check className="w-4 h-4" />
+          Copied Link
+        </>
+      ) : (
+        <>
+          <Share2 className="w-4 h-4" />
+          Share with Mentor
         </>
       )}
     </Button>
@@ -86,6 +131,7 @@ function CodeBlock({ code }: { code: string }) {
 
 
 export function AnswerDisplay({
+  messageId,
   question,
   directAnswer,
   detailedExplanation,
@@ -103,6 +149,7 @@ export function AnswerDisplay({
   followUps,
   onFollowUpClick,
   generationTime,
+  fluencyData,
 }: AnswerDisplayProps) {
 
   const hasBruteForce = bruteForceApproach || bruteForceCode
@@ -117,11 +164,12 @@ export function AnswerDisplay({
         transition={{ duration: 0.5 }}
       >
         <Card className="border-l-4 border-l-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800">
-          <CardHeader className="p-4 sm:p-6">
+          <CardHeader className="p-4 sm:p-6 flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-indigo-700 dark:text-indigo-300">
               <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
               Question
             </CardTitle>
+            {messageId && <ShareButton messageId={messageId} />}
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0">
             <p className="text-sm sm:text-lg font-medium text-gray-900 dark:text-gray-50">
@@ -146,6 +194,37 @@ export function AnswerDisplay({
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0">
             <p className="text-sm sm:text-lg font-medium text-gray-900 dark:text-gray-50 whitespace-pre-wrap">{directAnswer}</p>
+            
+            {fluencyData && (
+              <div className="mt-6 p-4 rounded-lg bg-white/50 dark:bg-black/20 border border-green-100 dark:border-green-900/50">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-green-800 dark:text-green-300">Speech Fluency Analysis</h4>
+                  <div className="px-3 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-full text-sm font-bold">
+                    Score: {fluencyData.score}/100
+                  </div>
+                </div>
+                
+                <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2.5 mb-4">
+                  <div 
+                    className={`h-2.5 rounded-full ${fluencyData.score > 80 ? 'bg-green-500' : fluencyData.score > 50 ? 'bg-yellow-500' : 'bg-red-500'}`} 
+                    style={{ width: `${fluencyData.score}%` }}
+                  ></div>
+                </div>
+
+                <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                  <p className="mb-2">You used <strong>{fluencyData.fillerCount}</strong> filler words across ~{fluencyData.totalWords} total words.</p>
+                  {Object.keys(fluencyData.fillerBreakdown).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {Object.entries(fluencyData.fillerBreakdown).map(([word, count]) => (
+                        <span key={word} className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-md text-xs font-medium border border-red-200 dark:border-red-800/50">
+                          "{word}": {count}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

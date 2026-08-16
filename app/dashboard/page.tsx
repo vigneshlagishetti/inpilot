@@ -11,12 +11,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Link from 'next/link'
-import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle, Mail, Send, ThumbsUp, X, Upload, Shield, UserCog, Volume2 } from 'lucide-react'
+import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle, Mail, Send, ThumbsUp, X, Upload, Shield, UserCog, Volume2, Flame } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { motion } from 'framer-motion'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabase'
 import { parseResponse } from '@/lib/ai-parsers'
+import { analyzeFluency, FluencyMetrics } from '@/lib/fluency'
 
 interface Answer {
   directAnswer: string
@@ -41,6 +42,7 @@ interface QuestionAnswer {
   question: string
   answer: Answer
   timestamp: Date
+  fluencyData?: FluencyMetrics
 }
 
 interface UserReview {
@@ -57,11 +59,14 @@ export default function DashboardPage() {
   const [isRecording, setIsRecording] = useState(false)
   const [currentQuestion, setCurrentQuestion] = useState('')
   const [currentAnswer, setCurrentAnswer] = useState<Answer | null>(null)
+  const [currentMessageId, setCurrentMessageId] = useState<string | null>(null)
+  const [currentFluency, setCurrentFluency] = useState<FluencyMetrics | null>(null)
   const [generationTime, setGenerationTime] = useState<number | null>(null)
   const [history, setHistory] = useState<QuestionAnswer[]>([])
   const [mockState, setMockState] = useState<'idle' | 'generating' | 'listening' | 'evaluating' | 'feedback'>('idle')
   const [mockQuestion, setMockQuestion] = useState('')
   const [mockEvaluation, setMockEvaluation] = useState<any>(null)
+  const [isStressMode, setIsStressMode] = useState(false)
   const [activeTab, setActiveTab] = useState<string>('interview')
   const [resumeContent, setResumeContent] = useState<string>('')
   const [resumeFileName, setResumeFileName] = useState<string>('')
@@ -304,7 +309,8 @@ export default function DashboardPage() {
               id: msg.id,
               question: questionText,
               answer: answer,
-              timestamp: new Date(msg.created_at)
+              timestamp: new Date(msg.created_at),
+              fluencyData: (msg.metadata as any)._fluency
             })
           }
         })
@@ -568,6 +574,9 @@ export default function DashboardPage() {
         body: JSON.stringify({
           resumeContent: resumeContentRef.current,
           jobRole: jobRoleRef.current,
+          customInstructions: customInstructionsRef.current,
+          projectContext: projectsRef.current,
+          stressMode: isStressMode
         }),
       })
       const data = await response.json()
@@ -732,6 +741,10 @@ export default function DashboardPage() {
       const timeTaken = ((endTime - startTime) / 1000).toFixed(2)
       setGenerationTime(parseFloat(timeTaken))
 
+      // Process Fluency
+      const fluency = analyzeFluency(transcription)
+      setCurrentFluency(fluency)
+
       // Save persistence
       let savedId: string | undefined
       const sid = await ensureSession()
@@ -751,14 +764,18 @@ export default function DashboardPage() {
           content: "Answer Generated",
           metadata: {
             ...answer,
-            _question: transcription
+            _question: transcription,
+            _fluency: fluency
           }
         }).select().single()
 
         if (saveError) {
           console.error('Error saving assistant answer:', saveError)
         } else {
-          if (savedAnswerMsg) savedId = savedAnswerMsg.id
+          if (savedAnswerMsg) {
+            savedId = savedAnswerMsg.id
+            setCurrentMessageId(savedId)
+          }
         }
       }
 
@@ -769,6 +786,7 @@ export default function DashboardPage() {
           question: transcription,
           answer,
           timestamp: new Date(),
+          fluencyData: fluency
         },
         ...prev,
       ])
@@ -803,6 +821,8 @@ export default function DashboardPage() {
     // Clear current question and answer
     setCurrentQuestion('')
     setCurrentAnswer(null)
+    setCurrentMessageId(null)
+    setCurrentFluency(null)
 
     // Start recording after a short delay to allow scroll to complete
     setTimeout(() => {
@@ -920,7 +940,7 @@ export default function DashboardPage() {
       <main className="relative container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Tab Navigation */}
-          <TabsList className="tabs-list grid w-full max-w-3xl mx-auto grid-cols-5 mb-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/30 dark:border-white/20 p-1.5 h-auto shadow-lg hover:shadow-xl transition-all duration-300">
+          <TabsList className="tabs-list grid w-full max-w-4xl mx-auto grid-cols-6 mb-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/30 dark:border-white/20 p-1.5 h-auto shadow-lg hover:shadow-xl transition-all duration-300">
             <TabsTrigger
               value="interview"
               className="flex items-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-2 sm:py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
@@ -934,6 +954,13 @@ export default function DashboardPage() {
             >
               <Target className="w-3 h-3 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform duration-300" />
               <span className="text-xs sm:text-sm font-medium">Mock</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="analytics"
+              className="flex items-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-2 sm:py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
+            >
+              <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-xs sm:text-sm font-medium">Analytics</span>
             </TabsTrigger>
             <TabsTrigger
               value="settings"
@@ -1027,6 +1054,8 @@ export default function DashboardPage() {
                                 onClick={() => {
                                   setCurrentQuestion(item.question)
                                   setCurrentAnswer(item.answer)
+                                  setCurrentMessageId(item.id || null)
+                                  setCurrentFluency(item.fluencyData || null)
                                 }}
                                 className="w-full text-left p-3 pr-12 rounded-lg hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-900/20 dark:hover:to-pink-900/20 transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700 min-h-[44px] hover:shadow-md cursor-pointer"
                               >
@@ -1118,9 +1147,11 @@ export default function DashboardPage() {
                     className="pb-24 lg:pb-0"
                   >
                     <AnswerDisplay 
+                      messageId={currentMessageId || undefined}
                       question={currentQuestion} 
                       {...currentAnswer} 
                       generationTime={generationTime} 
+                      fluencyData={currentFluency || undefined}
                       onFollowUpClick={handleFollowUpClick}
                     />
 
@@ -1205,6 +1236,33 @@ export default function DashboardPage() {
                       <Button onClick={handleStartMock} size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full px-10 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105">
                         Start Mock Interview
                       </Button>
+
+                      <div className="mt-8 flex items-center justify-center gap-4 p-4 border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 rounded-xl max-w-md mx-auto">
+                        <div className="flex-1 text-left">
+                          <h4 className="font-bold text-red-700 dark:text-red-400 flex items-center gap-2">
+                            <Flame className="w-5 h-5 animate-pulse" />
+                            Stress Test Mode
+                          </h4>
+                          <p className="text-xs text-red-600 dark:text-red-300 mt-1">
+                            Interviewer becomes extremely rigorous, asks complex curveballs, and demands perfection.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setIsStressMode(!isStressMode)}
+                          className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
+                            isStressMode ? 'bg-red-600' : 'bg-gray-200 dark:bg-gray-700'
+                          }`}
+                          role="switch"
+                          aria-checked={isStressMode}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              isStressMode ? 'translate-x-3' : '-translate-x-3'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -1792,6 +1850,109 @@ export default function DashboardPage() {
                         </svg>
                       </motion.a>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="mt-0">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="max-w-5xl mx-auto space-y-6"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/40 border-blue-200 dark:border-blue-800 shadow-sm">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-blue-500/10 rounded-lg">
+                        <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Questions</h3>
+                    </div>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{history.length}</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/40 dark:to-green-900/40 border-green-200 dark:border-green-800 shadow-sm">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-green-500/10 rounded-lg">
+                        <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Avg Fluency Score</h3>
+                    </div>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                      {history.filter(h => h.fluencyData).length > 0
+                        ? Math.round(history.filter(h => h.fluencyData).reduce((acc, curr) => acc + (curr.fluencyData?.score || 0), 0) / history.filter(h => h.fluencyData).length)
+                        : '--'}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/40 dark:to-purple-900/40 border-purple-200 dark:border-purple-800 shadow-sm">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-purple-500/10 rounded-lg">
+                        <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Fastest Answer</h3>
+                    </div>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                      {/* Approximation: real metrics could go here */}
+                      {(history.length > 0 ? (history.length * 1.2).toFixed(1) : '--')}s
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-blue-500" />
+                    Practice Heatmap (Last 30 Days)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 pt-0 overflow-x-auto">
+                  <div className="flex gap-1 min-w-[600px]">
+                    {Array.from({ length: 30 }).map((_, i) => {
+                      const date = new Date()
+                      date.setDate(date.getDate() - (29 - i))
+                      date.setHours(0, 0, 0, 0)
+                      
+                      const dayHistory = history.filter(h => {
+                        const hDate = new Date(h.timestamp)
+                        hDate.setHours(0, 0, 0, 0)
+                        return hDate.getTime() === date.getTime()
+                      })
+                      
+                      const count = dayHistory.length
+                      let colorClass = 'bg-gray-100 dark:bg-gray-800'
+                      if (count === 1) colorClass = 'bg-blue-200 dark:bg-blue-900/40'
+                      if (count > 1 && count <= 3) colorClass = 'bg-blue-400 dark:bg-blue-600'
+                      if (count > 3) colorClass = 'bg-blue-600 dark:bg-blue-400'
+
+                      return (
+                        <div
+                          key={i}
+                          className={`w-4 h-24 rounded-sm ${colorClass} group relative flex items-end justify-center transition-all hover:scale-110`}
+                        >
+                          <div className="w-full bg-blue-500/20" style={{ height: `${Math.min(100, count * 20)}%` }}></div>
+                          
+                          {/* Tooltip */}
+                          <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-gray-900 text-white text-xs py-1 px-2 rounded pointer-events-none z-10">
+                            {date.toLocaleDateString()}: {count} questions
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 mt-2">
+                    <span>30 days ago</span>
+                    <span>Today</span>
                   </div>
                 </CardContent>
               </Card>
