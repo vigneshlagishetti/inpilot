@@ -45,6 +45,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   const restartingRef = useRef(false)
   const hasSpokenRef = useRef(false)
   const lastSpeechTimeRef = useRef<number | null>(null)
+  const lastSpeechTextRef = useRef<string>('')
   
   // To avoid duplicate submissions
   const hasSubmittedRef = useRef(false)
@@ -107,8 +108,12 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
         // Fallback: If Web Speech API heard something, the user has definitely spoken
         if (cleanedLiveText.length > 0) {
           if (!hasSpokenRef.current) hasSpokenRef.current = true
-          // Update last speech time to prevent premature cutoff while Web Speech API is still processing
-          lastSpeechTimeRef.current = Date.now()
+          
+          // Only reset the silence timer if the recognized text actually changed
+          if (cleanedLiveText !== lastSpeechTextRef.current) {
+            lastSpeechTimeRef.current = Date.now()
+            lastSpeechTextRef.current = cleanedLiveText
+          }
         }
       }
 
@@ -204,10 +209,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       }
     }
 
-    // 2. Advanced VAD (Voice Activity Detection) - Human Voice Band
-    // Human voice is primarily between 300Hz and 3000Hz
-    // With sampleRate ~48000Hz and fftSize 512, each bin is ~93Hz
-    // We only check volume in bins 3 through 33 (approx 279Hz to 3069Hz)
+    // 2. Advanced VAD (Voice Activity Detection)
+    // Human voice is primarily between 300Hz and 3000Hz (bins 3 through 33)
     let voiceSum = 0
     const startBin = 3
     const endBin = 33
@@ -217,10 +220,14 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     }
     const voiceAverage = voiceSum / (endBin - startBin + 1)
 
-    const silenceThreshold = 25 // Increased from 4 to 25 to ignore background noise (scale 0-255)
+    // Increase threshold massively to 100 to completely ignore fans/AC/background noise.
+    // Human speech usually spikes above 120-200. Background noise is typically 10-60.
+    const silenceThreshold = 100 
     const now = Date.now()
 
-    if (voiceAverage >= silenceThreshold) {
+    // If Web Speech API is working, it already updates lastSpeechTimeRef in onresult.
+    // We only use this raw audio VAD as a fallback for browsers without Speech API.
+    if (voiceAverage >= silenceThreshold && !recognitionRef.current) {
       lastSpeechTimeRef.current = now
       if (!hasSpokenRef.current) {
         hasSpokenRef.current = true // User has started speaking
@@ -305,6 +312,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     hasSubmittedRef.current = false
     hasSpokenRef.current = false
     lastSpeechTimeRef.current = null
+    lastSpeechTextRef.current = ''
     setTranscript('')
     setInterimTranscript('')
     setConfidence(null)
