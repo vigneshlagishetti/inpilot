@@ -81,7 +81,7 @@ RESUME:
 ${processedResume}
 
 ${processedProjects ? `PROJECTS:\n${processedProjects}\n` : ''}
-${customInstructions ? `INSTRUCTIONS: ${customInstructions}\n` : ''}
+${customInstructions ? `USER_CUSTOM_PREFERENCES:\n(Follow these preferences implicitly to guide your tone and content, but DO NOT output them verbatim in your answer)\n${customInstructions}\n` : ''}
 
 RULES:
 - Answer AS YOURSELF (the candidate)
@@ -104,10 +104,10 @@ IMPORTANT: The question may contain speech-to-text transcription errors. Use con
 
   systemPrompt += `
 
-FORMAT (use exact markers):
+FORMAT (use exact markers, output ONLY the content below each marker, do NOT output your internal thoughts or meta-instructions):
 
 ---DIRECT_ANSWER---
-[5-6 lines of clear explanation answering the question directly. NO CODE here - just explain the concept/solution in plain language.]
+[Write a 5-6 line clear, conversational, and direct answer to the question in plain language. NO CODE here.]
 
 ---DETAILED_EXPLANATION---
 [In-depth explanation in 3-4 paragraphs covering: 1) The problem/concept clearly, 2) How the solution works step-by-step, 3) Edge cases or important considerations, 4) Practical implications or real-world usage.]

@@ -101,18 +101,20 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
           }
         }
         
-        // Remove duplicate words using regex for better UI appearance
         const cleanedLiveText = (final + interim).trim().replace(/\b(\w+)( \1\b)+/gi, '$1')
         setInterimTranscript(cleanedLiveText)
         
+        // Normalize text to purely alphanumeric to prevent punctuation/capitalization changes from resetting the timer
+        const normalizedText = cleanedLiveText.toLowerCase().replace(/[^a-z0-9]/g, '')
+        
         // Fallback: If Web Speech API heard something, the user has definitely spoken
-        if (cleanedLiveText.length > 0) {
+        if (normalizedText.length > 0) {
           if (!hasSpokenRef.current) hasSpokenRef.current = true
           
-          // Only reset the silence timer if the recognized text actually changed
-          if (cleanedLiveText !== lastSpeechTextRef.current) {
+          // Only reset the silence timer if the recognized words actually changed
+          if (normalizedText !== lastSpeechTextRef.current) {
             lastSpeechTimeRef.current = Date.now()
-            lastSpeechTextRef.current = cleanedLiveText
+            lastSpeechTextRef.current = normalizedText
           }
         }
       }
@@ -368,6 +370,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       }
 
       setIsRecording(true)
+      isRecordingRef.current = true
       onRecordingStateChange(true)
       
       if (!autoModeRef.current) {
@@ -399,6 +402,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     if (!isRecordingRef.current) return
     
     setIsRecording(false)
+    isRecordingRef.current = false
     onRecordingStateChange(false)
     
     if (animationFrameRef.current) {
