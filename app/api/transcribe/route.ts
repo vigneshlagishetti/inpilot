@@ -15,9 +15,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
     }
 
+    const baseURL = process.env.OPENAI_BASE_URL || ''
+    const isGroq = baseURL.toLowerCase().includes('groq')
+    const model = isGroq ? 'whisper-large-v3' : 'whisper-1'
+
     const transcription = await openai.audio.transcriptions.create({
       file,
-      model: 'whisper-1',
+      model,
       prompt: 'This is a software engineering interview. The candidate may use technical programming jargon such as React, Node.js, JavaScript, Python, TypeScript, System Design, Data Structures, Algorithms, Binary Search Trees, HashMap, Big O notation, Kubernetes, Docker, scalability, and latency.',
     })
 

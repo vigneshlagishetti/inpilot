@@ -16,7 +16,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { motion } from 'framer-motion'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabase'
-import { parseResponse } from '@/lib/ai-service'
+import { parseResponse } from '@/lib/ai-parsers'
 
 interface Answer {
   directAnswer: string
@@ -73,6 +73,7 @@ export default function DashboardPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const { toast } = useToast()
   const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
   const { user } = useUser()
 
   // Use refs to always have the latest values (avoids closure issues)
@@ -87,6 +88,7 @@ export default function DashboardPage() {
 
   // Load saved data from localStorage on mount
   useEffect(() => {
+    setMounted(true)
     const savedResume = localStorage.getItem('interviewAssistant_resume')
     const savedFileName = localStorage.getItem('interviewAssistant_fileName')
     const savedJobRole = localStorage.getItem('interviewAssistant_jobRole')
@@ -614,10 +616,17 @@ export default function DashboardPage() {
       let rawText = ''
       let finalAnswer: any = null
 
+      let isFirstChunk = true
+
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
         
+        if (isFirstChunk) {
+          setIsLoading(false)
+          isFirstChunk = false
+        }
+
         rawText += decoder.decode(value, { stream: true })
         
         // Progressively parse and update UI
@@ -781,9 +790,9 @@ export default function DashboardPage() {
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="rounded-full hover:bg-white/50 dark:hover:bg-white/10 h-8 w-8 sm:h-10 sm:w-10"
               aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={mounted && theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
-              {theme === 'dark' ? (
+              {mounted && theme === 'dark' ? (
                 <Sun className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
               ) : (
                 <Moon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />

@@ -450,7 +450,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   }
 
   // ── Button handler ──────────────────────────────────────────────────────────
-  const handleMicPress = useCallback((e: React.PointerEvent) => {
+  const handleMicPress = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
     const now = Date.now()
     const debounce = isMobileRef.current ? 800 : 400
@@ -540,8 +540,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
                 type="button"
                 size="lg"
                 variant={isRecording ? 'destructive' : 'default'}
-                onPointerDown={handleMicPress}
-                onClick={(e) => e.preventDefault()}
+                onClick={handleMicPress}
                 className={`relative w-16 h-16 sm:w-18 sm:h-18 rounded-full transition-all duration-200 select-none ${isRecording
                   ? 'recording-pulse scale-105 shadow-xl'
                   : 'hover:scale-105 hover:shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
@@ -616,7 +615,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
                   setIsPaused(false)
                   setTranscript('')
                   setInterimTranscript('')
-                  setTimeout(() => startRecording(), 300)
+                  startRecording()
                 }}
                 className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02] text-sm py-2"
               >
