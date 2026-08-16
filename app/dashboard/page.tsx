@@ -1115,6 +1115,7 @@ export default function DashboardPage() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5 }}
+                    className="pb-24 lg:pb-0"
                   >
                     <AnswerDisplay 
                       question={currentQuestion} 
@@ -1123,16 +1124,16 @@ export default function DashboardPage() {
                       onFollowUpClick={handleFollowUpClick}
                     />
 
-                    {/* Next Question Button - Only show on mobile */}
-                    <div className="mt-6 flex justify-center lg:hidden">
+                    {/* Next Question Button - Floating on mobile */}
+                    <div className="fixed bottom-6 left-4 right-4 z-50 flex justify-center lg:hidden animate-in slide-in-from-bottom-10 fade-in duration-500">
                       <Button
                         type="button"
                         onClick={handleNextQuestion}
                         size="lg"
-                        className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold px-8 py-3 rounded-full hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
+                        className="w-full max-w-sm bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold py-6 text-lg rounded-full shadow-2xl shadow-green-500/20 hover:scale-105 transition-all duration-300"
                       >
-                        <Mic2 className="w-5 h-5 mr-2" />
-                        Next Question
+                        <Mic2 className="w-6 h-6 mr-2 animate-pulse" />
+                        Ask Next Question
                       </Button>
                     </div>
                   </motion.div>
@@ -1297,8 +1298,8 @@ export default function DashboardPage() {
                             </div>
                           </div>
 
-                          <div className="flex justify-center pt-8 pb-4 border-t border-gray-100 dark:border-gray-800">
-                            <Button onClick={handleStartMock} size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full px-12 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                          <div className="fixed bottom-6 left-4 right-4 z-50 flex justify-center lg:static lg:pt-8 lg:pb-4 lg:border-t lg:border-gray-100 lg:dark:border-gray-800 animate-in slide-in-from-bottom-10 fade-in duration-500">
+                            <Button onClick={handleStartMock} size="lg" className="w-full max-w-sm lg:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full lg:px-12 py-6 text-lg font-semibold shadow-2xl shadow-blue-500/20 hover:shadow-xl transition-all hover:scale-105">
                               Generate Next Question
                             </Button>
                           </div>
