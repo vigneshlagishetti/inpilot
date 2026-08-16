@@ -38,6 +38,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
   const audioChunksRef = useRef<Blob[]>([])
   const isRecordingRef = useRef(false)
+  const autoModeRef = useRef(autoStart)
+  const silenceStartRef = useRef<number | null>(null)
   const isMobileRef = useRef(false)
   const isStartingRef = useRef(false)
   const wakeLockRef = useRef<any>(null)
