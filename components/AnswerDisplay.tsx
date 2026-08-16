@@ -21,6 +21,8 @@ interface AnswerDisplayProps {
   optimalTime?: string
   optimalSpace?: string
   optimalWhy?: string
+  followUps?: string[]
+  onFollowUpClick?: (question: string) => void
   generationTime?: number | null
 }
 
@@ -98,6 +100,8 @@ export function AnswerDisplay({
   optimalTime,
   optimalSpace,
   optimalWhy,
+  followUps,
+  onFollowUpClick,
   generationTime,
 }: AnswerDisplayProps) {
 
@@ -349,6 +353,36 @@ export function AnswerDisplay({
               </CardContent>
             </Card>
           )}
+        </motion.div>
+      )}
+
+      {/* Follow Up Questions */}
+      {followUps && followUps.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+        >
+          <Card className="border-l-4 border-l-pink-500 bg-pink-50/50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800">
+            <CardHeader className="p-4 sm:p-6 pb-2">
+              <CardTitle className="text-sm sm:text-base text-pink-700 dark:text-pink-300 flex items-center gap-2">
+                <Lightbulb className="w-4 h-4" />
+                Predicted Follow-Up Questions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-0 space-y-2">
+              {followUps.map((fu, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => onFollowUpClick?.(fu)}
+                  className="w-full text-left px-4 py-2.5 rounded-lg text-sm bg-white dark:bg-gray-900 border border-pink-200 dark:border-pink-800 hover:border-pink-400 hover:shadow-sm transition-all duration-200 text-gray-700 dark:text-gray-300"
+                >
+                  <span className="font-semibold text-pink-500 mr-2">Q{idx + 1}:</span>
+                  {fu}
+                </button>
+              ))}
+            </CardContent>
+          </Card>
         </motion.div>
       )}
 

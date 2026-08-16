@@ -145,7 +145,10 @@ FOR CODING QUESTIONS ONLY (otherwise write "N/A" for all sections below):
 [Space complexity like "O(n)" with explanation: "because we use a hash map..."]
 
 ---OPTIMAL_WHY---
-[Explain why the optimal approach is better: performance gains, trade-offs, when to use it]`
+[Explain why the optimal approach is better: performance gains, trade-offs, when to use it]
+
+---FOLLOW_UPS---
+[Provide exactly 3 likely follow-up questions the interviewer might ask next based on this answer. Separate them by newlines. DO NOT number them.]`
 
   return systemPrompt
 }

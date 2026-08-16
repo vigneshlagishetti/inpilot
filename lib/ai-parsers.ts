@@ -14,6 +14,8 @@ export interface AnswerResponse {
   optimalTime?: string
   optimalSpace?: string
   optimalWhy?: string
+  // Follow ups
+  followUps?: string[]
 }
 
 export function parseResponse(response: string): AnswerResponse {
@@ -32,6 +34,7 @@ export function parseResponse(response: string): AnswerResponse {
     optimalTime: extractSection(response, 'OPTIMAL_TIME'),
     optimalSpace: extractSection(response, 'OPTIMAL_SPACE'),
     optimalWhy: extractSection(response, 'OPTIMAL_WHY'),
+    followUps: extractSection(response, 'FOLLOW_UPS'),
   }
 
 
@@ -67,6 +70,7 @@ export function parseResponse(response: string): AnswerResponse {
     optimalTime: sections.optimalTime !== 'N/A' && sections.optimalTime ? sections.optimalTime : undefined,
     optimalSpace: sections.optimalSpace !== 'N/A' && sections.optimalSpace ? sections.optimalSpace : undefined,
     optimalWhy: sections.optimalWhy !== 'N/A' && sections.optimalWhy ? sections.optimalWhy : undefined,
+    followUps: sections.followUps ? sections.followUps.split('\n').map(s => s.replace(/^[-*0-9.]+\s*/, '').trim()).filter(Boolean) : undefined,
   }
 }
 

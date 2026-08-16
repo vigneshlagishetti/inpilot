@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import Link from 'next/link'
-import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle, Mail, Send, ThumbsUp, X, Upload, Shield, UserCog } from 'lucide-react'
+import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle, Mail, Send, ThumbsUp, X, Upload, Shield, UserCog, Volume2 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { motion } from 'framer-motion'
 import { useTheme } from 'next-themes'
@@ -59,6 +59,10 @@ export default function DashboardPage() {
   const [currentAnswer, setCurrentAnswer] = useState<Answer | null>(null)
   const [generationTime, setGenerationTime] = useState<number | null>(null)
   const [history, setHistory] = useState<QuestionAnswer[]>([])
+  const [mockState, setMockState] = useState<'idle' | 'generating' | 'listening' | 'evaluating' | 'feedback'>('idle')
+  const [mockQuestion, setMockQuestion] = useState('')
+  const [mockEvaluation, setMockEvaluation] = useState<any>(null)
+  const [activeTab, setActiveTab] = useState<string>('interview')
   const [resumeContent, setResumeContent] = useState<string>('')
   const [resumeFileName, setResumeFileName] = useState<string>('')
   const [jobRole, setJobRole] = useState<string>('')
@@ -75,6 +79,7 @@ export default function DashboardPage() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const { user } = useUser()
+  const [isVoiceMode, setIsVoiceMode] = useState(false)
 
   // Use refs to always have the latest values (avoids closure issues)
   const resumeContentRef = useRef<string>('')
@@ -552,12 +557,79 @@ export default function DashboardPage() {
     })
   }
 
+  const handleStartMock = async () => {
+    setMockState('generating')
+    setMockEvaluation(null)
+    
+    try {
+      const response = await fetch('/api/generate-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resumeContent: resumeContentRef.current,
+          jobRole: jobRoleRef.current,
+        }),
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setMockQuestion(data.question)
+        setMockState('listening')
+        if (isVoiceMode) {
+          const utterance = new SpeechSynthesisUtterance(data.question)
+          window.speechSynthesis.speak(utterance)
+        }
+      } else {
+        toast({ title: 'Error', description: data.error, variant: 'destructive' })
+        setMockState('idle')
+      }
+    } catch (e) {
+      setMockState('idle')
+    }
+  }
+
+  const handleMockTranscription = async (transcription: string) => {
+    setMockState('evaluating')
+    try {
+      const response = await fetch('/api/evaluate-answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: mockQuestion,
+          userAnswer: transcription,
+          resumeContent: resumeContentRef.current,
+          jobRole: jobRoleRef.current,
+        }),
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setMockEvaluation(data)
+        setMockState('feedback')
+        if (isVoiceMode) {
+          const utterance = new SpeechSynthesisUtterance(data.feedback)
+          window.speechSynthesis.speak(utterance)
+        }
+      } else {
+        toast({ title: 'Error', description: data.error, variant: 'destructive' })
+        setMockState('idle')
+      }
+    } catch (e) {
+      setMockState('idle')
+    } finally {
+      isProcessingRef.current = false
+    }
+  }
+
   const handleTranscription = async (transcription: string) => {
     // Safety guard against duplicate calls
     if (isProcessingRef.current) {
       return
     }
     isProcessingRef.current = true
+
+    if (activeTab === 'mock') {
+      await handleMockTranscription(transcription)
+      return
+    }
 
     setCurrentQuestion(transcription)
     setIsLoading(true)
@@ -643,6 +715,19 @@ export default function DashboardPage() {
       }
 
       const answer = finalAnswer
+      
+      // Trigger TTS if voice mode is enabled
+      if (isVoiceMode && answer?.directAnswer) {
+        window.speechSynthesis.cancel() // Cancel any ongoing speech
+        const utterance = new SpeechSynthesisUtterance(answer.directAnswer)
+        const voices = window.speechSynthesis.getVoices()
+        const preferredVoice = voices.find(v => v.lang.includes('en-US') && v.name.includes('Female')) || 
+                               voices.find(v => v.lang.includes('en-US')) || 
+                               voices[0]
+        if (preferredVoice) utterance.voice = preferredVoice
+        window.speechSynthesis.speak(utterance)
+      }
+
       const endTime = Date.now()
       const timeTaken = ((endTime - startTime) / 1000).toFixed(2)
       setGenerationTime(parseFloat(timeTaken))
@@ -729,6 +814,19 @@ export default function DashboardPage() {
     }, 800)
   }
 
+  const handleFollowUpClick = (question: string) => {
+    // Scroll back to recording section so user can see it processing
+    if (recordingSectionRef.current) {
+      recordingSectionRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+        inline: 'nearest'
+      })
+    }
+    // Automatically trigger transcription with the follow-up text
+    handleTranscription(question)
+  }
+
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-blue-950/20 dark:to-purple-950/20">
       {/* Animated background gradients - Reduced on mobile for performance */}
@@ -787,6 +885,19 @@ export default function DashboardPage() {
               type="button"
               variant="ghost"
               size="icon"
+              onClick={() => {
+                setIsVoiceMode(!isVoiceMode)
+                if (isVoiceMode) window.speechSynthesis.cancel()
+              }}
+              className="rounded-full hover:bg-white/50 dark:hover:bg-white/10 h-8 w-8 sm:h-10 sm:w-10"
+              title={isVoiceMode ? "Mute AI Voice" : "Enable AI Voice"}
+            >
+              <Volume2 className={`w-4 h-4 sm:w-5 sm:h-5 ${isVoiceMode ? 'text-green-500' : 'text-gray-400'}`} />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="rounded-full hover:bg-white/50 dark:hover:bg-white/10 h-8 w-8 sm:h-10 sm:w-10"
               aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -807,15 +918,22 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="relative container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        <Tabs defaultValue="interview" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Tab Navigation */}
-          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-4 mb-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/30 dark:border-white/20 p-1.5 h-auto shadow-lg hover:shadow-xl transition-all duration-300">
+          <TabsList className="tabs-list grid w-full max-w-3xl mx-auto grid-cols-5 mb-6 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/30 dark:border-white/20 p-1.5 h-auto shadow-lg hover:shadow-xl transition-all duration-300">
             <TabsTrigger
               value="interview"
               className="flex items-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-2 sm:py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
             >
               <Mic2 className="w-3 h-3 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform duration-300" />
               <span className="text-xs sm:text-sm font-medium">Practice</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="mock"
+              className="flex items-center gap-1 sm:gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg py-2 sm:py-3 rounded-lg transition-all duration-300 hover:scale-105 hover:bg-white/50 dark:hover:bg-gray-800/50 group"
+            >
+              <Target className="w-3 h-3 sm:w-4 sm:h-4 group-hover:scale-110 transition-transform duration-300" />
+              <span className="text-xs sm:text-sm font-medium">Mock</span>
             </TabsTrigger>
             <TabsTrigger
               value="settings"
@@ -945,6 +1063,17 @@ export default function DashboardPage() {
                             </div>
                           ))}
                         </div>
+                        
+                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                          <Button 
+                            variant="outline" 
+                            className="w-full border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-700 dark:text-purple-300"
+                            onClick={() => window.print()}
+                          >
+                            <FileText className="w-4 h-4 mr-2" />
+                            Export Session to PDF
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   </motion.div>
@@ -987,7 +1116,12 @@ export default function DashboardPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.5 }}
                   >
-                    <AnswerDisplay question={currentQuestion} {...currentAnswer} generationTime={generationTime} />
+                    <AnswerDisplay 
+                      question={currentQuestion} 
+                      {...currentAnswer} 
+                      generationTime={generationTime} 
+                      onFollowUpClick={handleFollowUpClick}
+                    />
 
                     {/* Next Question Button - Only show on mobile */}
                     <div className="mt-6 flex justify-center lg:hidden">
@@ -1042,6 +1176,138 @@ export default function DashboardPage() {
                   </motion.div>
                 )}
               </div>
+            </div>
+          </TabsContent>
+
+          {/* Mock Interview Tab */}
+          <TabsContent value="mock" className="mt-0">
+            <div className="max-w-4xl mx-auto">
+              <Card className="border-white/20 dark:border-white/10 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl min-h-[400px]">
+                <CardHeader className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/30 dark:to-purple-950/30 p-6">
+                  <CardTitle className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                    <Target className="w-6 h-6 text-blue-600" />
+                    Mock Interview Mode
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-6 lg:p-8">
+                  {mockState === 'idle' && (
+                    <div className="text-center py-12 px-4 max-w-2xl mx-auto">
+                      <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <MessageCircle className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                        Realistic Interview Simulation
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-8 text-lg">
+                        The AI will generate personalized interview questions based on your resume and target role. Speak your answer, and receive an instant professional evaluation with a score out of 100.
+                      </p>
+                      <Button onClick={handleStartMock} size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full px-10 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                        Start Mock Interview
+                      </Button>
+                    </div>
+                  )}
+
+                  {mockState === 'generating' && (
+                    <div className="text-center py-20">
+                      <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-6" />
+                      <p className="text-lg font-medium text-gray-700 dark:text-gray-300">Generating your personalized question...</p>
+                    </div>
+                  )}
+
+                  {(mockState === 'listening' || mockState === 'evaluating' || mockState === 'feedback') && (
+                    <div className="space-y-8">
+                      <div className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl border border-blue-100 dark:border-blue-800/50 shadow-sm">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Target className="w-5 h-5 text-blue-600" />
+                          <p className="text-sm text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">Interviewer</p>
+                        </div>
+                        <p className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 leading-relaxed">{mockQuestion}</p>
+                      </div>
+
+                      {mockState === 'listening' && (
+                        <div className="mt-8">
+                          <div className="text-center mb-6">
+                            <p className="text-gray-600 dark:text-gray-400 font-medium">Use the Voice Recorder to answer the question</p>
+                          </div>
+                          <div className="max-w-2xl mx-auto">
+                            <VoiceRecorder
+                              onTranscriptionComplete={handleTranscription}
+                              onRecordingStateChange={setIsRecording}
+                              autoStart={true}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {mockState === 'evaluating' && (
+                        <div className="text-center py-16">
+                          <Loader2 className="w-12 h-12 animate-spin text-purple-500 mx-auto mb-6" />
+                          <p className="text-lg font-medium text-gray-700 dark:text-gray-300">Evaluating your answer against the question...</p>
+                        </div>
+                      )}
+
+                      {mockState === 'feedback' && mockEvaluation && (
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                          <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl text-white shadow-lg gap-6">
+                            <div className="text-center sm:text-left">
+                              <h4 className="text-2xl font-bold mb-1">Evaluation Score</h4>
+                              <p className="text-purple-100 text-sm font-medium">Based on accuracy, completeness, and delivery</p>
+                            </div>
+                            <div className="text-5xl font-extrabold bg-white/20 px-8 py-4 rounded-xl backdrop-blur-sm shrink-0">
+                              {mockEvaluation.score}<span className="text-2xl text-white/70">/100</span>
+                            </div>
+                          </div>
+
+                          <div className="p-6 border border-gray-200 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30">
+                            <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                              <MessageSquare className="w-5 h-5 text-purple-500" />
+                              Overall Feedback
+                            </h4>
+                            <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg">{mockEvaluation.feedback}</p>
+                          </div>
+
+                          <div className="grid sm:grid-cols-2 gap-6">
+                            <div className="p-6 border border-green-200 bg-green-50 dark:bg-green-900/10 dark:border-green-800/50 rounded-2xl shadow-sm">
+                              <h4 className="text-lg font-bold text-green-700 dark:text-green-400 mb-4 flex items-center gap-2">
+                                <CheckCircle className="w-5 h-5" /> 
+                                Strengths
+                              </h4>
+                              <ul className="space-y-3">
+                                {mockEvaluation.strengths?.map((s: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-2 text-green-800 dark:text-green-300 font-medium">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2 shrink-0" />
+                                    <span>{s}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div className="p-6 border border-orange-200 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800/50 rounded-2xl shadow-sm">
+                              <h4 className="text-lg font-bold text-orange-700 dark:text-orange-400 mb-4 flex items-center gap-2">
+                                <TrendingUp className="w-5 h-5" /> 
+                                Areas for Improvement
+                              </h4>
+                              <ul className="space-y-3">
+                                {mockEvaluation.improvements?.map((s: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-2 text-orange-800 dark:text-orange-300 font-medium">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-2 shrink-0" />
+                                    <span>{s}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-center pt-8 pb-4 border-t border-gray-100 dark:border-gray-800">
+                            <Button onClick={handleStartMock} size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full px-12 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                              Generate Next Question
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 

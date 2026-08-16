@@ -5,6 +5,7 @@ import { Mic, MicOff, Volume2, Pause, Play, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
+import { analyzeConfidence, ConfidenceResult } from '@/lib/confidence'
 
 interface VoiceRecorderProps {
   onTranscriptionComplete: (text: string) => void
@@ -23,6 +24,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   const [interimTranscript, setInterimTranscript] = useState('') // Native Web Speech live text
   const [autoMode, setAutoMode] = useState(autoStart)
   const [isPaused, setIsPaused] = useState(false) // used in auto mode when waiting for next question
+  const [confidence, setConfidence] = useState<ConfidenceResult | null>(null)
   const { toast } = useToast()
 
   // ── Refs ────────────────────────────────────────────────────────────────────
@@ -41,6 +43,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   const isMobileRef = useRef(false)
   const lastButtonPressRef = useRef(0)
   const restartingRef = useRef(false)
+  const hasSpokenRef = useRef(false)
+  const lastSpeechTimeRef = useRef<number | null>(null)
   
   // To avoid duplicate submissions
   const hasSubmittedRef = useRef(false)
@@ -99,6 +103,13 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
         // Remove duplicate words using regex for better UI appearance
         const cleanedLiveText = (final + interim).trim().replace(/\b(\w+)( \1\b)+/gi, '$1')
         setInterimTranscript(cleanedLiveText)
+        
+        // Fallback: If Web Speech API heard something, the user has definitely spoken
+        if (cleanedLiveText.length > 0) {
+          if (!hasSpokenRef.current) hasSpokenRef.current = true
+          // Update last speech time to prevent premature cutoff while Web Speech API is still processing
+          lastSpeechTimeRef.current = Date.now()
+        }
       }
 
       recognition.onerror = (event: any) => {
@@ -206,30 +217,33 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     }
     const voiceAverage = voiceSum / (endBin - startBin + 1)
 
-    const silenceThreshold = 8 // Adjusted threshold for isolated human frequency
+    const silenceThreshold = 25 // Increased from 4 to 25 to ignore background noise (scale 0-255)
     const now = Date.now()
 
-    if (voiceAverage < silenceThreshold) {
-      if (!silenceStartRef.current) {
-        silenceStartRef.current = now
-      } else {
-        const silenceDuration = now - silenceStartRef.current
-        const maxSilence = isMobileRef.current ? 2500 : 2000
-        
-        if (silenceDuration > maxSilence) {
+    if (voiceAverage >= silenceThreshold) {
+      lastSpeechTimeRef.current = now
+      if (!hasSpokenRef.current) {
+        hasSpokenRef.current = true // User has started speaking
+      }
+    } 
+    
+    // Check if we should stop
+    if (lastSpeechTimeRef.current && hasSpokenRef.current) {
+      const silenceDuration = now - lastSpeechTimeRef.current
+      // If they have spoken, wait exactly 2 seconds of silence to assume they finished (ONLY in Auto Mode)
+      if (silenceDuration > 2000) {
+        if (autoModeRef.current) {
           stopRecording(true)
           return // Stop polling
         }
       }
-    } else {
-      silenceStartRef.current = null // Reset silence timer when speech is detected
     }
 
     animationFrameRef.current = requestAnimationFrame(checkSilence)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Process Audio via Whisper ─────────────────────────────────────────────────
-  const processAudio = async (blob: Blob) => {
+  const processAudio = async (blob: Blob, filename: string = 'audio.webm') => {
     if (blob.size === 0) return
 
     setIsProcessing(true)
@@ -237,7 +251,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
     try {
       const formData = new FormData()
-      formData.append('file', blob, 'audio.webm')
+      formData.append('file', blob, filename)
 
       const response = await fetch('/api/transcribe', {
         method: 'POST',
@@ -253,6 +267,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
       if (text) {
         setTranscript(text)
+        setConfidence(analyzeConfidence(text))
         setInterimTranscript('') // Clear the live native text
         hasSubmittedRef.current = true
         onTranscriptionCompleteRef.current(text)
@@ -288,8 +303,11 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
     // Reset state
     hasSubmittedRef.current = false
+    hasSpokenRef.current = false
+    lastSpeechTimeRef.current = null
     setTranscript('')
     setInterimTranscript('')
+    setConfidence(null)
     setIsPaused(false)
     silenceStartRef.current = null
     cleanupAudio()
@@ -311,8 +329,11 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       mediaRecorder.onstop = () => {
         // Only process if we actually recorded something and haven't processed yet
         if (audioChunksRef.current.length > 0 && !hasSubmittedRef.current) {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }) 
-          processAudio(audioBlob)
+          const mimeType = mediaRecorder.mimeType || 'audio/webm'
+          const fileExtension = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm'
+          
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType }) 
+          processAudio(audioBlob, `audio.${fileExtension}`)
         }
       }
 
@@ -595,16 +616,31 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
             {/* Transcript display (Live native text OR Final Whisper text) */}
             {(transcript || interimTranscript) && (
               <div className="w-full p-3 bg-muted rounded-lg border border-gray-200 dark:border-gray-700">
-                <p className="text-xs font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
-                  {transcript ? 'Final Transcript:' : 'Live Transcript (Web Speech API):'}
-                </p>
-                <p className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words leading-relaxed">
-                  {transcript || (
-                    <span className="text-gray-600 dark:text-gray-400 italic">
-                      {interimTranscript}
-                    </span>
+                <div className="flex justify-between items-center mb-1.5">
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    {transcript ? 'Final Transcript:' : 'Live Transcript (Web Speech API):'}
+                  </p>
+                  {confidence && (
+                    <div className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${
+                      confidence.score >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                      confidence.score >= 50 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    }`}>
+                      Confidence: {confidence.score}% {confidence.fillerCount > 0 && `(${confidence.fillerCount} fillers)`}
+                    </div>
                   )}
-                </p>
+                </div>
+                
+                {transcript ? (
+                  <div 
+                    className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 break-words leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: confidence?.highlightedHtml || transcript }}
+                  />
+                ) : (
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 italic break-words leading-relaxed">
+                    {interimTranscript}
+                  </p>
+                )}
               </div>
             )}
 
@@ -615,6 +651,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
                   setIsPaused(false)
                   setTranscript('')
                   setInterimTranscript('')
+                  setConfidence(null)
                   startRecording()
                 }}
                 className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02] text-sm py-2"
