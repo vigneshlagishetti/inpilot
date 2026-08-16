@@ -38,7 +38,6 @@ export default function MaintenanceChecker() {
             const response = await fetch('/api/admin/check');
             const data = await response.json();
             setIsAdmin(data.isAdmin || false);
-            console.log('[MaintenanceChecker] Admin status:', data.isAdmin);
         } catch (error) {
             console.error('[MaintenanceChecker] Error checking admin status:', error);
             setIsAdmin(false);
@@ -64,22 +63,18 @@ export default function MaintenanceChecker() {
                     filter: 'key=eq.maintenance_mode'
                 },
                 (payload) => {
-                    console.log('[MaintenanceChecker] Maintenance mode changed:', payload);
                     if (payload.new && 'value' in payload.new) {
                         const isEnabled = payload.new.value as boolean;
                         // Only redirect if NOT already on maintenance page
                         if (isEnabled && !isAdmin && currentPath !== '/maintenance') {
                             // Maintenance mode turned ON and user is NOT admin - redirect
-                            console.log('[MaintenanceChecker] Redirecting to maintenance page (non-admin user)');
                             window.location.href = '/maintenance';
                         } else if (isEnabled && isAdmin) {
-                            console.log('[MaintenanceChecker] Maintenance mode ON but admin bypass active');
                         }
                     }
                 }
             )
             .subscribe((status) => {
-                console.log('[MaintenanceChecker] Subscription status:', status);
             });
 
         // Fallback polling every 10 seconds (in case realtime fails)
@@ -95,13 +90,11 @@ export default function MaintenanceChecker() {
         try {
             // Skip check for admins
             if (isAdmin) {
-                console.log('[MaintenanceChecker] Admin user - skipping maintenance check');
                 return;
             }
 
             // Skip check if already on maintenance page (prevent redirect loop)
             if (currentPath === '/maintenance') {
-                console.log('[MaintenanceChecker] Already on maintenance page - skipping check');
                 return;
             }
 
@@ -115,7 +108,6 @@ export default function MaintenanceChecker() {
             const data = await response.json();
             
             if (data.enabled) {
-                console.log('[MaintenanceChecker] Maintenance mode detected via polling (non-admin user)');
                 window.location.href = '/maintenance';
             }
         } catch (error) {

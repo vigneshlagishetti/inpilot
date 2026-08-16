@@ -14,7 +14,7 @@ import Link from 'next/link'
 import { Loader2, MessageSquare, History, Moon, Sun, Sparkles, Mic2, Settings, Trash2, FileText, Briefcase, PenTool, Star, TrendingUp, Target, Zap, Clock, CheckCircle, MessageCircle, Mail, Send, ThumbsUp, X, Upload, Shield, UserCog } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { motion } from 'framer-motion'
-import { useTheme } from '@/components/ThemeProvider'
+import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabase'
 
 interface Answer {
@@ -71,7 +71,7 @@ export default function DashboardPage() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const { toast } = useToast()
-  const { theme, toggleTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
   const { user } = useUser()
 
   // Use refs to always have the latest values (avoids closure issues)
@@ -206,7 +206,6 @@ export default function DashboardPage() {
         throw error
       }
 
-      console.log('Resume saved to database successfully')
     } catch (error) {
       console.error('Error in saveResumeToDB:', error)
       toast({
@@ -223,7 +222,6 @@ export default function DashboardPage() {
     if (!user?.id) return null
 
     try {
-      console.log('Ensuring session for user:', user.id)
       const { data: existing } = await supabase
         .from('conversations')
         .select('id')
@@ -233,12 +231,10 @@ export default function DashboardPage() {
         .single()
 
       if (existing) {
-        console.log('Found existing session:', existing.id)
         setSessionId(existing.id)
         return existing.id
       }
 
-      console.log('Creating new session...')
       const { data: newSession, error } = await supabase
         .from('conversations')
         .insert({
@@ -265,14 +261,11 @@ export default function DashboardPage() {
     if (!user?.id) return
 
     try {
-      console.log('Loading history...')
       const sid = await ensureSession()
       if (!sid) {
-        console.log('No session ID found.')
         return
       }
 
-      console.log('Fetching messages for session:', sid)
       const { data: messages, error } = await supabase
         .from('conversation_messages')
         .select('*')
@@ -285,17 +278,14 @@ export default function DashboardPage() {
         throw error
       }
 
-      console.log('Messages fetched:', messages?.length)
 
       if (messages) {
         // Log all messages to see what we got
-        console.log('Raw messages dump:', JSON.stringify(messages.map(m => ({ id: m.id, type: m.type, hasMeta: !!m.metadata, metaRaw: m.metadata }))))
 
         const historyItems: QuestionAnswer[] = []
         messages.forEach(msg => {
           // Debug why a message might be skipped
           if (msg.type === 'assistant') {
-            console.log('Found assistant msg:', msg.id, 'Metadata:', msg.metadata)
           }
 
           if (msg.type === 'assistant' && msg.metadata) {
@@ -310,7 +300,6 @@ export default function DashboardPage() {
             })
           }
         })
-        console.log('Parsed history items:', historyItems.length)
         setHistory(historyItems)
       }
     } catch (error) {
@@ -363,17 +352,35 @@ export default function DashboardPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
-      });
+        },
+        body: JSON.stringify({
+          id: newReview.id,
+          userName: newReview.userName,
+          userEmail: newReview.userEmail,
+          rating: newReview.rating,
+          text: newReview.text,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save review')
+      }
+
+      // Reload reviews to show the new one
+      await loadReviews()
     } catch (error) {
       console.error('Error saving review:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to save review. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
   // Update refs whenever state changes
   useEffect(() => {
     resumeContentRef.current = resumeContent
-    console.log('resumeContentRef updated to:', resumeContent.length, 'characters')
   }, [resumeContent])
 
   useEffect(() => {
@@ -389,10 +396,6 @@ export default function DashboardPage() {
   }, [projects])
 
   const handleResumeContent = (content: string, fileName: string) => {
-    console.log('=== DASHBOARD handleResumeContent ===')
-    console.log('Received content length:', content.length)
-    console.log('Received fileName:', fileName)
-    console.log('Content preview:', content.substring(0, 100))
 
     setResumeContent(content)
     setResumeFileName(fileName)
@@ -404,7 +407,6 @@ export default function DashboardPage() {
     // Save to database for permanent storage
     saveResumeToDB(content, fileName, jobRole, customInstructions)
 
-    console.log('State updated - resumeContent length:', content.length)
   }
 
   const handleJobRoleChange = (role: string) => {
@@ -536,7 +538,6 @@ export default function DashboardPage() {
           .from('user_resumes')
           .delete()
           .eq('user_id', user.id)
-        console.log('Resume deleted from database')
       } catch (error) {
         console.error('Error deleting resume from DB:', error)
       }
@@ -549,9 +550,8 @@ export default function DashboardPage() {
   }
 
   const handleTranscription = async (transcription: string) => {
-    // Prevent duplicate calls (VoiceRecorder sometimes fires twice)
+    // Safety guard against duplicate calls
     if (isProcessingRef.current) {
-      console.log('⚠️ Duplicate transcription call ignored:', transcription)
       return
     }
     isProcessingRef.current = true
@@ -582,18 +582,9 @@ export default function DashboardPage() {
       ).join('\n\n')
     }
 
-    console.log('=== DASHBOARD DEBUG ===')
-    console.log('Question:', transcription)
-    console.log('Resume content available (from ref):', !!currentResumeContent)
-    console.log('Resume content length (from ref):', currentResumeContent.length)
-    console.log('Job role:', currentJobRole)
-    console.log('Custom instructions:', currentInstructions)
-    console.log('Project Context Length:', currentProjectContext.length)
-    console.log('Num Projects:', currentProjects.length)
 
     try {
       const startTime = Date.now()
-      console.log('Sending request to /api/generate-answer...')
       const response = await fetch('/api/generate-answer', {
         method: 'POST',
         headers: {
@@ -608,8 +599,6 @@ export default function DashboardPage() {
         }),
       })
 
-      console.log('Response status:', response.status)
-      console.log('Response ok:', response.ok)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -620,8 +609,6 @@ export default function DashboardPage() {
       const answer = await response.json()
       const endTime = Date.now()
       const timeTaken = ((endTime - startTime) / 1000).toFixed(2)
-      console.log('Answer received:', answer)
-      console.log('Generation time:', timeTaken, 'seconds')
       setGenerationTime(parseFloat(timeTaken))
       setCurrentAnswer(answer)
 
@@ -651,7 +638,6 @@ export default function DashboardPage() {
         if (saveError) {
           console.error('Error saving assistant answer:', saveError)
         } else {
-          console.log('Saved assistant answer:', savedAnswerMsg?.id)
           if (savedAnswerMsg) savedId = savedAnswerMsg.id
         }
       }
@@ -778,7 +764,7 @@ export default function DashboardPage() {
               type="button"
               variant="ghost"
               size="icon"
-              onClick={toggleTheme}
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="rounded-full hover:bg-white/50 dark:hover:bg-white/10 h-8 w-8 sm:h-10 sm:w-10"
               aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -1216,9 +1202,6 @@ export default function DashboardPage() {
                   {userReviews.length > 0 ? (
                     userReviews.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((review, index) => {
                       // Debug logging
-                      console.log('User email:', user?.primaryEmailAddress?.emailAddress)
-                      console.log('Review email:', review.userEmail)
-                      console.log('Is admin?', user?.primaryEmailAddress?.emailAddress === 'vigneshlagishetti789@gmail.com')
 
                       return (
                         <motion.div

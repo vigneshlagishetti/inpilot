@@ -29,12 +29,10 @@ export default function UnderConstruction() {
     useEffect(() => {
         // Prevent multiple setups using ref
         if (hasSetupRef.current) {
-            console.log('[MaintenanceRecovery] Already setup, skipping');
             return;
         }
         
         hasSetupRef.current = true; // Mark as setup
-        console.log('[MaintenanceRecovery] Setting up subscriptions');
         
         // Initial check with slight delay to avoid race conditions
         const initialCheckTimer = setTimeout(() => {
@@ -53,14 +51,11 @@ export default function UnderConstruction() {
                     filter: 'key=eq.maintenance_mode'
                 },
                 (payload) => {
-                    console.log('[MaintenanceRecovery] Maintenance mode changed:', payload)
                     if (payload.new && 'value' in payload.new) {
                         const isEnabled = payload.new.value as boolean
-                        console.log('[MaintenanceRecovery] New maintenance status:', isEnabled ? 'ON' : 'OFF')
                         
                         // Skip if this is the same state we already processed
                         if (lastMaintenanceState.current === isEnabled) {
-                            console.log('[MaintenanceRecovery] State unchanged, ignoring duplicate event')
                             return
                         }
                         
@@ -68,7 +63,6 @@ export default function UnderConstruction() {
                         
                         if (!isEnabled) {
                             // Maintenance mode turned OFF - redirect to dashboard
-                            console.log('[MaintenanceRecovery] Maintenance mode ended! Redirecting to dashboard')
                             toast({
                                 title: "🎉 We're back!",
                                 description: "Maintenance is complete. Redirecting you now...",
@@ -78,25 +72,20 @@ export default function UnderConstruction() {
                                 // Add recovery token to bypass middleware check temporarily (30 seconds)
                                 const bypassUntil = Date.now() + 30000; // 30 seconds
                                 const redirectUrl = `/dashboard?_recovery=true&_bypass=${bypassUntil}`;
-                                console.log('[MaintenanceRecovery] 🔄 Redirecting to:', redirectUrl);
-                                console.log('[MaintenanceRecovery] 📅 Bypass valid until:', new Date(bypassUntil).toISOString());
                                 window.location.href = redirectUrl;
                             }, 1000)
                         } else {
-                            console.log('[MaintenanceRecovery] Maintenance still ON - staying on page')
                         }
                     }
                 }
             )
             .subscribe((status) => {
-                console.log('[MaintenanceRecovery] Subscription status:', status)
             })
 
         // Fallback polling every 10 seconds (increased from 5 to reduce requests)
         const pollInterval = setInterval(checkMaintenanceMode, 10000)
 
         return () => {
-            console.log('[MaintenanceRecovery] Cleaning up subscriptions');
             clearTimeout(initialCheckTimer);
             supabase.removeChannel(channel);
             clearInterval(pollInterval);
@@ -107,7 +96,6 @@ export default function UnderConstruction() {
     async function checkMaintenanceMode() {
         // Prevent multiple simultaneous checks
         if (isChecking) {
-            console.log('[MaintenanceRecovery] Check already in progress, skipping');
             return;
         }
 
@@ -122,13 +110,11 @@ export default function UnderConstruction() {
             const data = await response.json()
             
             if (!data.enabled) {
-                console.log('[MaintenanceRecovery] Maintenance mode ended via polling')
                 // Clear interval before redirect to prevent further checks
                 // Add recovery token to bypass middleware check temporarily (30 seconds)
                 const bypassUntil = Date.now() + 30000; // 30 seconds
                 window.location.href = `/dashboard?_recovery=true&_bypass=${bypassUntil}`
             } else {
-                console.log('[MaintenanceRecovery] Still in maintenance mode')
             }
         } catch (error) {
             console.error('[MaintenanceRecovery] Error checking maintenance mode:', error)

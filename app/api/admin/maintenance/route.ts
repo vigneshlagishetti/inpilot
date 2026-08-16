@@ -99,11 +99,9 @@ export async function POST(request: NextRequest) {
         // Create authenticated Supabase client
         let supabaseClient = undefined;
         try {
-            console.log('[API] Attempting to get Supabase token...');
             const token = await getToken({ template: 'supabase' });
 
             if (token) {
-                console.log('[API] Token found, length:', token.length);
                 supabaseClient = createClient(
                     process.env.NEXT_PUBLIC_SUPABASE_URL!,
                     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

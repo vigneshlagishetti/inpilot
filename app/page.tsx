@@ -28,7 +28,6 @@ export default function Home() {
       
       if (data.enabled) {
         // Maintenance is ON - stay on landing page, don't auto-redirect
-        console.log('[Home] Maintenance mode is active - staying on landing page')
       } else {
         // No maintenance - safe to redirect to dashboard
         router.push('/dashboard')

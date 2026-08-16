@@ -16,12 +16,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid question' }, { status: 400 })
     }
 
-    console.log('Received question:', question)
-    console.log('Has resume content:', !!resumeContent)
-    console.log('Has project context:', !!projectContext)
-    console.log('Job role:', jobRole || 'Not specified')
-    console.log('Custom instructions:', customInstructions || 'None')
-
     const answer = await generateAnswer(question, resumeContent, jobRole, customInstructions, projectContext)
 
     return NextResponse.json(answer)

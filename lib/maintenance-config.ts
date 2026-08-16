@@ -39,8 +39,6 @@ export async function setMaintenanceMode(
     client: SupabaseClient = supabase
 ): Promise<{ success: boolean; message: string }> {
     try {
-        console.log(`[setMaintenanceMode] 🔄 Updating maintenance mode to: ${enabled}`);
-        console.log(`[setMaintenanceMode] Updated by: ${updatedBy || 'system'}`);
         
         const { error } = await client
             .from('maintenance_settings')
@@ -61,7 +59,6 @@ export async function setMaintenanceMode(
             };
         }
 
-        console.log(`[setMaintenanceMode] ✅ Successfully updated to: ${enabled}`);
         
         // Verify the update by reading it back
         const { data: verifyData, error: verifyError } = await client
@@ -71,7 +68,6 @@ export async function setMaintenanceMode(
             .single();
             
         if (!verifyError && verifyData) {
-            console.log(`[setMaintenanceMode] 🔍 Verification - Database now shows: ${verifyData.value}`);
         }
 
         return {

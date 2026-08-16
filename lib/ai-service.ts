@@ -44,12 +44,6 @@ export async function generateAnswer(
   customInstructions?: string,
   projectContext?: string
 ): Promise<AnswerResponse> {
-  console.log('=== GENERATE ANSWER DEBUG ===')
-  console.log('Question:', question)
-  console.log('Resume provided:', !!resumeContent)
-  console.log('Resume length:', resumeContent?.length || 0)
-  console.log('Job role:', jobRole || 'Not specified')
-  console.log('Custom instructions:', customInstructions || 'None')
 
   // Token budget management for llama-3.1-8b-instant (6000 total tokens)
   // Reserve: 1800 for output, ~1000 for system prompt structure, leaving ~3200 for content
@@ -79,9 +73,6 @@ export async function generateAnswer(
       extractedName = nameMatch ? nameMatch[1] : ''
     }
 
-    console.log('Extracted name:', extractedName)
-    console.log('Resume content preview:', resumeContent.substring(0, 200))
-    console.log('Project context provided:', !!projectContext)
     
     // Smart truncation to stay within token limits
     let processedResume = truncateToTokens(resumeContent, MAX_RESUME_TOKENS)
@@ -89,14 +80,12 @@ export async function generateAnswer(
     
     // Calculate total estimated tokens
     const totalEstimatedTokens = estimateTokens(processedResume) + estimateTokens(processedProjects)
-    console.log('Estimated input tokens:', totalEstimatedTokens, '/ budget:', MAX_TOTAL_INPUT_TOKENS)
     
     // If still too large, reduce further
     if (totalEstimatedTokens > MAX_TOTAL_INPUT_TOKENS) {
       const reductionRatio = MAX_TOTAL_INPUT_TOKENS / totalEstimatedTokens
       processedResume = truncateToTokens(processedResume, Math.floor(MAX_RESUME_TOKENS * reductionRatio))
       processedProjects = processedProjects ? truncateToTokens(processedProjects, Math.floor(MAX_PROJECT_TOKENS * reductionRatio)) : ''
-      console.log('Further reduced to fit budget. New estimate:', estimateTokens(processedResume) + estimateTokens(processedProjects))
     }
 
     // ALWAYS act as the candidate when resume is uploaded
@@ -176,7 +165,6 @@ FOR CODING QUESTIONS ONLY (otherwise write "N/A" for all sections below):
 [Explain why the optimal approach is better: performance gains, trade-offs, when to use it]`
 
   try {
-    console.log('Generating answer for question:', question)
     const startTime = Date.now()
     
     const makeRequest = async (): Promise<string> => {
@@ -210,7 +198,6 @@ FOR CODING QUESTIONS ONLY (otherwise write "N/A" for all sections below):
     }
 
     const endTime = Date.now()
-    console.log(`Answer generated successfully in ${endTime - startTime}ms`)
     return parseResponse(response)
   } catch (error: any) {
     console.error('Error generating answer:', error)
@@ -220,9 +207,6 @@ FOR CODING QUESTIONS ONLY (otherwise write "N/A" for all sections below):
 }
 
 function parseResponse(response: string): AnswerResponse {
-  console.log('=== PARSE RESPONSE ===')
-  console.log('Raw response length:', response.length)
-  console.log('Raw response preview:', response.substring(0, 300))
 
   const sections = {
     directAnswer: extractSection(response, 'DIRECT_ANSWER'),
@@ -240,8 +224,6 @@ function parseResponse(response: string): AnswerResponse {
     optimalWhy: extractSection(response, 'OPTIMAL_WHY'),
   }
 
-  console.log('Parsed directAnswer:', sections.directAnswer?.substring(0, 100) || 'EMPTY')
-  console.log('Parsed detailedExplanation:', sections.detailedExplanation?.substring(0, 100) || 'EMPTY')
 
   // Fallback: if the model didn't use markers at all, use the raw response as the direct answer
   // Split it roughly in half between direct answer and detailed explanation
@@ -249,7 +231,6 @@ function parseResponse(response: string): AnswerResponse {
   let detailedExplanation = sections.detailedExplanation
 
   if (!directAnswer && response.trim().length > 0) {
-    console.log('No markers found — using raw response as fallback')
     const paragraphs = response.trim().split(/\n\n+/)
     if (paragraphs.length >= 2) {
       // First ~40% of paragraphs = direct answer, rest = detailed explanation

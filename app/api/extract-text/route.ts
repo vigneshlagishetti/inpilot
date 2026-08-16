@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
             const buffer = Buffer.from(arrayBuffer)
 
             try {
-                console.log('Parsing PDF with buffer size:', buffer.length)
 
                 // Use pdf2json which is simpler and more reliable
                 const pdfParser = new PDFParser()
@@ -68,7 +67,6 @@ export async function POST(request: NextRequest) {
                                 })
                             }
 
-                            console.log('Extracted text length:', allText.length)
                             resolve(allText)
                         } catch (err) {
                             console.error('Error extracting text from pdfData:', err)
@@ -87,7 +85,6 @@ export async function POST(request: NextRequest) {
                     .filter(line => line.length > 0)
                     .join('\n')
 
-                console.log('PDF parsed successfully. Text length:', extractedText.length)
             } catch (pdfError) {
                 console.error('PDF parsing error:', pdfError)
                 return NextResponse.json(
@@ -111,10 +108,8 @@ export async function POST(request: NextRequest) {
                     .filter(line => line.length > 0)
                     .join('\n')
 
-                console.log('DOCX parsed successfully. Length:', extractedText.length)
 
                 if (result.messages.length > 0) {
-                    console.log('Mammoth warnings:', result.messages)
                 }
             } catch (docxError) {
                 console.error('DOCX parsing error:', docxError)

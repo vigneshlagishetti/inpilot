@@ -1,95 +1,135 @@
--- Create interview_sessions table
-CREATE TABLE IF NOT EXISTS interview_sessions (
+-- Comprehensive Schema for Inpilot
+
+-- 1. maintenance_settings
+CREATE TABLE IF NOT EXISTS maintenance_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL,
-  title TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  is_enabled BOOLEAN NOT NULL DEFAULT false,
+  updated_by TEXT,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create questions table
-CREATE TABLE IF NOT EXISTS questions (
+-- Insert default row if empty
+INSERT INTO maintenance_settings (id, is_enabled, updated_by)
+SELECT '00000000-0000-0000-0000-000000000001', false, 'system'
+WHERE NOT EXISTS (SELECT 1 FROM maintenance_settings);
+
+-- 2. user_resumes
+CREATE TABLE IF NOT EXISTS user_resumes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id UUID NOT NULL REFERENCES interview_sessions(id) ON DELETE CASCADE,
-  question_text TEXT NOT NULL,
-  audio_url TEXT,
+  user_id TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON user_resumes(user_id);
+
+-- 3. user_projects
+CREATE TABLE IF NOT EXISTS user_projects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  project_context TEXT NOT NULL,
+  num_projects INTEGER DEFAULT 1,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_projects_user_id ON user_projects(user_id);
+
+-- 4. conversations
+CREATE TABLE IF NOT EXISTS conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  title TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
+
+-- 5. conversation_messages
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  type TEXT DEFAULT 'text',
+  metadata JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON conversation_messages(conversation_id);
 
--- Create answers table
-CREATE TABLE IF NOT EXISTS answers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
-  direct_answer TEXT NOT NULL,
-  detailed_explanation TEXT NOT NULL,
-  example TEXT,
-  brute_force_approach TEXT,
-  optimal_approach TEXT,
-  time_complexity TEXT,
-  space_complexity TEXT,
+-- 6. reviews
+CREATE TABLE IF NOT EXISTS reviews (
+  id TEXT PRIMARY KEY,
+  user_name TEXT NOT NULL,
+  user_email TEXT NOT NULL,
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  text TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at);
 
--- Create indexes for better query performance
-CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON interview_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_questions_session_id ON questions(session_id);
-CREATE INDEX IF NOT EXISTS idx_answers_question_id ON answers(question_id);
 
--- Enable Row Level Security (RLS)
-ALTER TABLE interview_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE answers ENABLE ROW LEVEL SECURITY;
+-- ==============================================================================
+-- ROW LEVEL SECURITY (RLS)
+-- ==============================================================================
 
--- Create policies
--- Interview sessions policies
-CREATE POLICY "Users can view their own sessions" ON interview_sessions
-  FOR SELECT USING (auth.uid()::text = user_id);
+ALTER TABLE user_resumes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE maintenance_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can create their own sessions" ON interview_sessions
-  FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+-- user_resumes policies
+CREATE POLICY "Users can manage their own resumes" ON user_resumes
+  FOR ALL USING (auth.uid()::text = user_id) WITH CHECK (auth.uid()::text = user_id);
 
-CREATE POLICY "Users can update their own sessions" ON interview_sessions
-  FOR UPDATE USING (auth.uid()::text = user_id);
+-- user_projects policies
+CREATE POLICY "Users can manage their own projects" ON user_projects
+  FOR ALL USING (auth.uid()::text = user_id) WITH CHECK (auth.uid()::text = user_id);
 
-CREATE POLICY "Users can delete their own sessions" ON interview_sessions
-  FOR DELETE USING (auth.uid()::text = user_id);
+-- conversations policies
+CREATE POLICY "Users can manage their own conversations" ON conversations
+  FOR ALL USING (auth.uid()::text = user_id) WITH CHECK (auth.uid()::text = user_id);
 
--- Questions policies
-CREATE POLICY "Users can view questions from their sessions" ON questions
-  FOR SELECT USING (
+-- conversation_messages policies
+CREATE POLICY "Users can manage messages in their conversations" ON conversation_messages
+  FOR ALL USING (
     EXISTS (
-      SELECT 1 FROM interview_sessions
-      WHERE interview_sessions.id = questions.session_id
-      AND interview_sessions.user_id = auth.uid()::text
+      SELECT 1 FROM conversations
+      WHERE conversations.id = conversation_messages.conversation_id
+      AND conversations.user_id = auth.uid()::text
+    )
+  ) WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM conversations
+      WHERE conversations.id = conversation_messages.conversation_id
+      AND conversations.user_id = auth.uid()::text
     )
   );
 
-CREATE POLICY "Users can create questions in their sessions" ON questions
-  FOR INSERT WITH CHECK (
+-- maintenance_settings policies
+CREATE POLICY "Anyone can read maintenance settings" ON maintenance_settings
+  FOR SELECT USING (true);
+  
+CREATE POLICY "Only admins can update maintenance settings" ON maintenance_settings
+  FOR UPDATE USING (
     EXISTS (
-      SELECT 1 FROM interview_sessions
-      WHERE interview_sessions.id = questions.session_id
-      AND interview_sessions.user_id = auth.uid()::text
+      SELECT 1 FROM admin_users
+      WHERE admin_users.user_id = auth.uid()::text
     )
   );
 
--- Answers policies
-CREATE POLICY "Users can view answers to their questions" ON answers
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM questions
-      JOIN interview_sessions ON interview_sessions.id = questions.session_id
-      WHERE questions.id = answers.question_id
-      AND interview_sessions.user_id = auth.uid()::text
-    )
-  );
-
-CREATE POLICY "Users can create answers to their questions" ON answers
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM questions
-      JOIN interview_sessions ON interview_sessions.id = questions.session_id
-      WHERE questions.id = answers.question_id
-      AND interview_sessions.user_id = auth.uid()::text
-    )
+-- reviews policies
+CREATE POLICY "Anyone can view reviews" ON reviews
+  FOR SELECT USING (true);
+  
+CREATE POLICY "Authenticated users can create reviews" ON reviews
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  
+CREATE POLICY "Users can delete their own reviews" ON reviews
+  FOR DELETE USING (
+    -- Allow deletion if the review belongs to the user OR if the user is an admin
+    user_email = (SELECT email FROM auth.users WHERE id = auth.uid()) OR
+    EXISTS (SELECT 1 FROM admin_users WHERE admin_users.user_id = auth.uid()::text)
   );

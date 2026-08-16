@@ -33,7 +33,6 @@ export default function MaintenanceModeToggle() {
                     filter: 'key=eq.maintenance_mode'
                 },
                 (payload) => {
-                    console.log('Maintenance mode changed:', payload);
                     if (payload.new && 'value' in payload.new) {
                         setEnabled(payload.new.value as boolean);
                     }
