@@ -32,6 +32,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   const analyserRef = useRef<AnalyserNode | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   
   const audioChunksRef = useRef<Blob[]>([])
   const isRecordingRef = useRef(false)
@@ -155,25 +156,60 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     analyserRef.current = null
   }, [])
 
-  // ── Silence detection ───────────────────────────────────────────────────────
+  // ── Silence detection & Audio Visualizer ────────────────────────────────────
   const checkSilence = useCallback(() => {
     if (!isRecordingRef.current || !analyserRef.current) return
 
-    const bufferLength = analyserRef.current.frequencyBinCount
+    const analyser = analyserRef.current
+    const bufferLength = analyser.frequencyBinCount
     const dataArray = new Uint8Array(bufferLength)
-    analyserRef.current.getByteFrequencyData(dataArray)
+    analyser.getByteFrequencyData(dataArray)
 
-    // Calculate volume
-    let sum = 0
-    for (let i = 0; i < bufferLength; i++) {
-      sum += dataArray[i]
+    // 1. Draw Visualizer
+    if (canvasRef.current) {
+      const canvas = canvasRef.current
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        const width = canvas.width
+        const height = canvas.height
+        ctx.clearRect(0, 0, width, height)
+
+        const barWidth = (width / bufferLength) * 2.5
+        let barHeight
+        let x = 0
+
+        for (let i = 0; i < bufferLength; i++) {
+          barHeight = dataArray[i] / 2
+          
+          // Gradient based on height
+          const gradient = ctx.createLinearGradient(0, height, 0, 0)
+          gradient.addColorStop(0, '#3b82f6') // blue-500
+          gradient.addColorStop(1, '#8b5cf6') // violet-500
+
+          ctx.fillStyle = gradient
+          ctx.fillRect(x, height - barHeight, barWidth, barHeight)
+          x += barWidth + 1
+        }
+      }
     }
-    const average = sum / bufferLength
 
-    const silenceThreshold = 5 // Out of 255
+    // 2. Advanced VAD (Voice Activity Detection) - Human Voice Band
+    // Human voice is primarily between 300Hz and 3000Hz
+    // With sampleRate ~48000Hz and fftSize 512, each bin is ~93Hz
+    // We only check volume in bins 3 through 33 (approx 279Hz to 3069Hz)
+    let voiceSum = 0
+    const startBin = 3
+    const endBin = 33
+    
+    for (let i = startBin; i <= endBin && i < bufferLength; i++) {
+      voiceSum += dataArray[i]
+    }
+    const voiceAverage = voiceSum / (endBin - startBin + 1)
+
+    const silenceThreshold = 8 // Adjusted threshold for isolated human frequency
     const now = Date.now()
 
-    if (average < silenceThreshold) {
+    if (voiceAverage < silenceThreshold) {
       if (!silenceStartRef.current) {
         silenceStartRef.current = now
       } else {
@@ -545,6 +581,16 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
                   <span className="text-xs text-muted-foreground">Whisper AI Processing...</span>
                 </div>
               )}
+            </div>
+
+            {/* Audio Visualizer Canvas */}
+            <div className={`transition-all duration-300 overflow-hidden ${isRecording && !isPaused ? 'h-16 opacity-100 mt-2' : 'h-0 opacity-0 mt-0'}`}>
+              <canvas
+                ref={canvasRef}
+                width={200}
+                height={60}
+                className="rounded-md bg-transparent"
+              />
             </div>
 
             {/* Transcript display (Live native text OR Final Whisper text) */}

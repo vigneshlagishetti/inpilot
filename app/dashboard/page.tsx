@@ -16,6 +16,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { motion } from 'framer-motion'
 import { useTheme } from 'next-themes'
 import { supabase } from '@/lib/supabase'
+import { parseResponse } from '@/lib/ai-service'
 
 interface Answer {
   directAnswer: string
@@ -606,11 +607,36 @@ export default function DashboardPage() {
         throw new Error(errorData.error || 'Failed to generate answer')
       }
 
-      const answer = await response.json()
+      if (!response.body) throw new Error('ReadableStream not yet supported in this browser.')
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let rawText = ''
+      let finalAnswer: any = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        
+        rawText += decoder.decode(value, { stream: true })
+        
+        // Progressively parse and update UI
+        finalAnswer = parseResponse(rawText)
+        setCurrentAnswer(finalAnswer)
+        
+        // Auto-scroll on first chunk
+        if (rawText.length < 50) {
+          const isMobile = window.innerWidth < 768
+          if (isMobile && answerSectionRef.current) {
+            answerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })
+          }
+        }
+      }
+
+      const answer = finalAnswer
       const endTime = Date.now()
       const timeTaken = ((endTime - startTime) / 1000).toFixed(2)
       setGenerationTime(parseFloat(timeTaken))
-      setCurrentAnswer(answer)
 
       // Save persistence
       let savedId: string | undefined
@@ -657,18 +683,6 @@ export default function DashboardPage() {
         title: 'Answer Generated',
         description: 'Your answer is ready!',
       })
-
-      // Auto-scroll to answer on mobile in continuous mode
-      setTimeout(() => {
-        const isMobile = window.innerWidth < 768 // sm breakpoint
-        if (isMobile && answerSectionRef.current) {
-          answerSectionRef.current.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-            inline: 'nearest'
-          })
-        }
-      }, 300) // Small delay to ensure content is rendered
     } catch (error) {
       console.error('Error generating answer:', error)
       toast({

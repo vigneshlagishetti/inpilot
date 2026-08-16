@@ -37,13 +37,13 @@ function truncateToTokens(text: string, maxTokens: number): string {
   return text.substring(0, maxChars) + '\n\n[Content truncated to fit token limits]'
 }
 
-export async function generateAnswer(
+export function buildSystemPrompt(
   question: string,
   resumeContent?: string,
   jobRole?: string,
   customInstructions?: string,
   projectContext?: string
-): Promise<AnswerResponse> {
+): string {
 
   // Token budget management for llama-3.1-8b-instant (6000 total tokens)
   // Reserve: 1800 for output, ~1000 for system prompt structure, leaving ~3200 for content
@@ -164,6 +164,18 @@ FOR CODING QUESTIONS ONLY (otherwise write "N/A" for all sections below):
 ---OPTIMAL_WHY---
 [Explain why the optimal approach is better: performance gains, trade-offs, when to use it]`
 
+  return systemPrompt
+}
+
+export async function generateAnswer(
+  question: string,
+  resumeContent?: string,
+  jobRole?: string,
+  customInstructions?: string,
+  projectContext?: string
+): Promise<AnswerResponse> {
+  const systemPrompt = buildSystemPrompt(question, resumeContent, jobRole, customInstructions, projectContext)
+
   try {
     const startTime = Date.now()
     
@@ -186,7 +198,6 @@ FOR CODING QUESTIONS ONLY (otherwise write "N/A" for all sections below):
     try {
       response = await makeRequest()
     } catch (err: any) {
-      // Auto-retry once on rate limit (429) — wait for retry-after header
       if (err?.status === 429) {
         const retryAfter = parseInt(err?.headers?.['retry-after'] || '30', 10)
         console.warn(`[AI] Rate limited. Retrying after ${retryAfter}s...`)
@@ -197,16 +208,14 @@ FOR CODING QUESTIONS ONLY (otherwise write "N/A" for all sections below):
       }
     }
 
-    const endTime = Date.now()
     return parseResponse(response)
   } catch (error: any) {
     console.error('Error generating answer:', error)
-    console.error('Error details:', error?.response?.data || error?.message)
     throw new Error(error?.response?.data?.error?.message || error?.message || 'Failed to generate answer')
   }
 }
 
-function parseResponse(response: string): AnswerResponse {
+export function parseResponse(response: string): AnswerResponse {
 
   const sections = {
     directAnswer: extractSection(response, 'DIRECT_ANSWER'),
