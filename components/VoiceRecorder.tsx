@@ -33,7 +33,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const animationFrameRef = useRef<number | null>(null)
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   
   const audioChunksRef = useRef<Blob[]>([])
@@ -41,6 +41,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   const autoModeRef = useRef(autoStart)
   const silenceStartRef = useRef<number | null>(null)
   const isMobileRef = useRef(false)
+  const isStartingRef = useRef(false)
+  const wakeLockRef = useRef<any>(null)
   const lastButtonPressRef = useRef(0)
   const restartingRef = useRef(false)
   const hasSpokenRef = useRef(false)
@@ -153,9 +155,9 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   }
 
   const cleanupAudio = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
+    if (pollingIntervalRef.current) {
+      clearTimeout(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
     }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop()
@@ -172,6 +174,12 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       audioContextRef.current = null
     }
     analyserRef.current = null
+    
+    // Release screen wake lock
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().catch(() => {})
+      wakeLockRef.current = null
+    }
   }, [])
 
   // ── Silence detection & Audio Visualizer ────────────────────────────────────
@@ -196,15 +204,14 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
         let barHeight
         let x = 0
 
+        // Create gradient ONCE outside the loop for massive performance improvement on mobile
+        const gradient = ctx.createLinearGradient(0, height, 0, 0)
+        gradient.addColorStop(0, '#3b82f6') // blue-500
+        gradient.addColorStop(1, '#8b5cf6') // violet-500
+        ctx.fillStyle = gradient
+
         for (let i = 0; i < bufferLength; i++) {
           barHeight = dataArray[i] / 2
-          
-          // Gradient based on height
-          const gradient = ctx.createLinearGradient(0, height, 0, 0)
-          gradient.addColorStop(0, '#3b82f6') // blue-500
-          gradient.addColorStop(1, '#8b5cf6') // violet-500
-
-          ctx.fillStyle = gradient
           ctx.fillRect(x, height - barHeight, barWidth, barHeight)
           x += barWidth + 1
         }
@@ -224,12 +231,13 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
     // Increase threshold massively to 100 to completely ignore fans/AC/background noise.
     // Human speech usually spikes above 120-200. Background noise is typically 10-60.
-    const silenceThreshold = 100 
+    // On mobile devices with AGC, the levels are lower, so we use a lower threshold.
+    const silenceThreshold = isMobileRef.current ? 40 : 100 
     const now = Date.now()
 
-    // If Web Speech API is working, it already updates lastSpeechTimeRef in onresult.
-    // We only use this raw audio VAD as a fallback for browsers without Speech API.
-    if (voiceAverage >= silenceThreshold && !recognitionRef.current) {
+    // We use the raw audio VAD as the primary source of truth for silence detection
+    // because Web Speech API can randomly pause or ignore soft speech/breathing.
+    if (voiceAverage >= silenceThreshold) {
       lastSpeechTimeRef.current = now
       if (!hasSpokenRef.current) {
         hasSpokenRef.current = true // User has started speaking
@@ -248,7 +256,9 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       }
     }
 
-    animationFrameRef.current = requestAnimationFrame(checkSilence)
+    // We use a short setTimeout rather than requestAnimationFrame so that the
+    // silence detector continues to run (albeit throttled) on Android when the tab is backgrounded.
+    pollingIntervalRef.current = setTimeout(checkSilence, 50)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Process Audio via Whisper ─────────────────────────────────────────────────
@@ -308,7 +318,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
   // ── Start recording ─────────────────────────────────────────────────────────
   const startRecording = useCallback(async () => {
-    if (isRecordingRef.current) return
+    if (isRecordingRef.current || isStartingRef.current) return
+    isStartingRef.current = true
 
     // Reset state
     hasSubmittedRef.current = false
@@ -323,7 +334,14 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     cleanupAudio()
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1
+        }
+      })
       streamRef.current = stream
       
       const mediaRecorder = new MediaRecorder(stream)
@@ -349,6 +367,11 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
       // Setup audio analysis for silence detection
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume().catch(() => console.warn('Could not resume audioContext'))
+      }
+      
       audioContextRef.current = audioContext
       const analyser = audioContext.createAnalyser()
       analyserRef.current = analyser
@@ -362,6 +385,18 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
       // Start MediaRecorder (Whisper backend)
       mediaRecorder.start()
+      
+      // Haptic feedback & Screen Wake Lock for mobile
+      if (typeof navigator !== 'undefined') {
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50)
+        }
+        if ('wakeLock' in navigator) {
+          navigator.wakeLock.request('screen')
+            .then(lock => { wakeLockRef.current = lock })
+            .catch(() => {}) // Ignore if not allowed or supported
+        }
+      }
       
       // Start Native Speech Recognition (Live UI feedback)
       if (recognitionRef.current) {
@@ -389,11 +424,13 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       console.error('[VoiceRecorder] Could not start:', error)
       toast({
         title: 'Error',
-        description: 'Could not start recording. Check microphone permissions.',
+        description: 'Could not start recording. Please tap the microphone manually and check permissions.',
         variant: 'destructive',
       })
       setIsRecording(false)
       onRecordingStateChange(false)
+    } finally {
+      isStartingRef.current = false
     }
   }, [checkSilence, cleanupAudio, onRecordingStateChange, toast])
 
@@ -423,6 +460,11 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
+    }
+    
+    // Haptic feedback for stop
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate([50, 100, 50])
     }
   }, [onRecordingStateChange])
 

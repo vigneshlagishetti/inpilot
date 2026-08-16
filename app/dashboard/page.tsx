@@ -564,6 +564,23 @@ export default function DashboardPage() {
   }
 
   const handleStartMock = async () => {
+    // Request microphone permission upfront synchronously to avoid mobile gesture token expiration
+    if (typeof window !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: 1
+          }
+        })
+        tempStream.getTracks().forEach(track => track.stop())
+      } catch (err) {
+        console.warn('Pre-requesting mic failed', err)
+      }
+    }
+
     setMockState('generating')
     setMockEvaluation(null)
     
@@ -824,14 +841,11 @@ export default function DashboardPage() {
     setCurrentMessageId(null)
     setCurrentFluency(null)
 
-    // Start recording after a short delay to allow scroll to complete
-    setTimeout(() => {
-      // This will trigger the voice recorder to start if it has a start method exposed
-      const isMobile = window.innerWidth < 768
-      if (isMobile && voiceRecorderRef.current && typeof voiceRecorderRef.current.startRecording === 'function') {
-        voiceRecorderRef.current.startRecording();
-      }
-    }, 800)
+    // On mobile, start recording synchronously to preserve user gesture token for getUserMedia
+    const isMobile = window.innerWidth < 768
+    if (isMobile && voiceRecorderRef.current && typeof voiceRecorderRef.current.startRecording === 'function') {
+      voiceRecorderRef.current.startRecording();
+    }
   }
 
   const handleFollowUpClick = (question: string) => {
