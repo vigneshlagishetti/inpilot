@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const transcription = await openai.audio.transcriptions.create({
       file,
       model,
-      prompt: 'This is a software engineering interview. The candidate may use technical programming jargon such as tuple, array, string, boolean, integer, loop, recursion, palindrome, React, Node.js, JavaScript, Python, TypeScript, System Design, Data Structures, Algorithms, Binary Search Trees, HashMap, Big O notation, API, JSON. The transcript MUST include all hesitation words exactly as spoken.',
+      prompt: 'This is a software engineering interview. The candidate may use technical programming jargon such as tuple, array, string, boolean, integer, loop, recursion, palindrome, React, Node.js, JavaScript, Python, TypeScript, System Design, Data Structures, Algorithms, Binary Search Trees, HashMap, Big O notation, API, JSON, RAG, Retrieval-Augmented Generation, LLM, Agentic RAG. The transcript MUST include all hesitation words exactly as spoken.',
     })
 
     const rawText = transcription.text
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       messages: [
         { 
           role: 'system', 
-          content: 'You are an advanced speech-to-text grammar corrector for a software engineering interview. The user spoke into a microphone and the raw text may contain phonetic mistakes (e.g. "tpl" instead of "tuple", "rivers" instead of "reverse", "buy nary" instead of "binary"). Fix the text so it makes perfect grammatical and technical sense in the context of programming. Output ONLY the corrected text and absolutely nothing else. Do not add quotes.' 
+          content: 'You are an advanced speech-to-text grammar corrector for a software engineering interview. The user spoke into a microphone and the raw text may contain phonetic mistakes (e.g. "tpl" instead of "tuple", "rivers" instead of "reverse", "agentic drag" instead of "agentic RAG"). Fix the text so it makes perfect grammatical and technical sense in the context of programming and AI. Output ONLY the corrected text and absolutely nothing else. Do not add quotes.' 
         },
         { role: 'user', content: rawText }
       ],
