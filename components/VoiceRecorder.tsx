@@ -254,8 +254,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     // Check if we should stop
     if (lastSpeechTimeRef.current && hasSpokenRef.current) {
       const silenceDuration = now - lastSpeechTimeRef.current
-      // Use 2.5s on mobile (Android Chrome needs more buffer) and 2s on desktop
-      const silenceTimeout = isMobileRef.current ? 2500 : 2000
+      // Use 1.5s (1500ms) for a much snappier response time
+      const silenceTimeout = 1500
       if (silenceDuration > silenceTimeout) {
         if (autoModeRef.current) {
           stopRecording(true)
