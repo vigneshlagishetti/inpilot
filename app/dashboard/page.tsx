@@ -722,8 +722,7 @@ export default function DashboardPage() {
       let finalAnswer: any = null
 
       let isFirstChunk = true
-      let spokenTextLength = 0
-      let hasStartedSpeaking = false
+      let hasScrolledToAnswer = false
       let lastUpdateTime = 0
 
       while (true) {
@@ -762,18 +761,20 @@ export default function DashboardPage() {
           if (cleanText) {
             finalAnswer = parseResponse(cleanText)
             setCurrentAnswer(finalAnswer)
+            
+            // Auto-scroll ONCE when the first real text appears
+            if (!hasScrolledToAnswer) {
+              hasScrolledToAnswer = true
+              setTimeout(() => {
+                if (answerSectionRef.current) {
+                  answerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+              }, 100)
+            }
           }
           lastUpdateTime = now
         }
         
-        // Auto-scroll on first chunk
-        if (rawText.length < 50) {
-          const isMobile = window.innerWidth < 768
-          if (isMobile && answerSectionRef.current) {
-            answerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })
-          }
-        }
-
         // Progressive TTS
         if (isVoiceMode && finalAnswer?.directAnswer) {
           while (true) {
