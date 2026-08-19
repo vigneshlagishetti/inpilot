@@ -430,6 +430,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
         })
       }
 
+      // Ensure the ref is true immediately so the loop doesn't abort on the first run
+      isRecordingRef.current = true
       // Start silence polling
       checkSilence()
 
