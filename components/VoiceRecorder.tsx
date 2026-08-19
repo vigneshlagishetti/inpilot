@@ -235,12 +235,19 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     const silenceThreshold = isMobileRef.current ? 20 : 50
     const now = Date.now()
 
-    // If Web Speech API is working, it already updates lastSpeechTimeRef in onresult.
-    // We only use this raw audio VAD as a fallback for loud sounds or browsers without Speech API.
+    // Use audio VAD to detect speech start and strong voice signals.
+    // IMPORTANT: Only extend the silence timer for STRONG signals (clearly speech).
+    // Weak signals (barely above threshold) only set hasSpokenRef.
+    // This prevents background noise (fans/AC/ambient) from blocking auto-stop.
     if (voiceAverage >= silenceThreshold) {
-      lastSpeechTimeRef.current = now
       if (!hasSpokenRef.current) {
         hasSpokenRef.current = true // User has started speaking
+        lastSpeechTimeRef.current = now // Set initial speech time
+      }
+      // Only extend silence timer for clearly audible speech (3x threshold)
+      // Desktop: voiceAverage >= 150, Mobile: voiceAverage >= 60
+      if (voiceAverage >= silenceThreshold * 3) {
+        lastSpeechTimeRef.current = now
       }
     }
 
