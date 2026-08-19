@@ -722,6 +722,8 @@ export default function DashboardPage() {
       let finalAnswer: any = null
 
       let isFirstChunk = true
+      let spokenTextLength = 0
+      let hasStartedSpeaking = false
 
       while (true) {
         const { done, value } = await reader.read()
@@ -745,20 +747,51 @@ export default function DashboardPage() {
             answerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })
           }
         }
+
+        // Progressive TTS
+        if (isVoiceMode && finalAnswer?.directAnswer) {
+          while (true) {
+            const unprocessedText = finalAnswer.directAnswer.substring(spokenTextLength)
+            const sentenceMatch = unprocessedText.match(/^([\s\S]*?[.!?])(?:\s|\n|$)/)
+            if (!sentenceMatch) break
+            
+            let sentence = sentenceMatch[1].trim()
+            if (sentence) {
+              sentence = sentence.replace(/[*`_]/g, '') // strip basic markdown
+              if (!hasStartedSpeaking) {
+                window.speechSynthesis.cancel()
+                hasStartedSpeaking = true
+              }
+              const utterance = new SpeechSynthesisUtterance(sentence)
+              const voices = window.speechSynthesis.getVoices()
+              const preferredVoice = voices.find(v => v.lang.includes('en-US') && v.name.includes('Female')) || 
+                                     voices.find(v => v.lang.includes('en-US')) || voices[0]
+              if (preferredVoice) utterance.voice = preferredVoice
+              window.speechSynthesis.speak(utterance)
+            }
+            spokenTextLength += sentenceMatch[0].length
+          }
+        }
       }
 
       const answer = finalAnswer
       
-      // Trigger TTS if voice mode is enabled
+      // Speak any remaining text that didn't end in punctuation
       if (isVoiceMode && answer?.directAnswer) {
-        window.speechSynthesis.cancel() // Cancel any ongoing speech
-        const utterance = new SpeechSynthesisUtterance(answer.directAnswer)
-        const voices = window.speechSynthesis.getVoices()
-        const preferredVoice = voices.find(v => v.lang.includes('en-US') && v.name.includes('Female')) || 
-                               voices.find(v => v.lang.includes('en-US')) || 
-                               voices[0]
-        if (preferredVoice) utterance.voice = preferredVoice
-        window.speechSynthesis.speak(utterance)
+        const remainingText = answer.directAnswer.substring(spokenTextLength).trim()
+        if (remainingText) {
+          let sentence = remainingText.replace(/[*`_]/g, '')
+          if (!hasStartedSpeaking) {
+            window.speechSynthesis.cancel()
+            hasStartedSpeaking = true
+          }
+          const utterance = new SpeechSynthesisUtterance(sentence)
+          const voices = window.speechSynthesis.getVoices()
+          const preferredVoice = voices.find(v => v.lang.includes('en-US') && v.name.includes('Female')) || 
+                                 voices.find(v => v.lang.includes('en-US')) || voices[0]
+          if (preferredVoice) utterance.voice = preferredVoice
+          window.speechSynthesis.speak(utterance)
+        }
       }
 
       const endTime = Date.now()
