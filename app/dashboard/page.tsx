@@ -669,6 +669,13 @@ export default function DashboardPage() {
     ]
     setLoadingTip(tips[Math.floor(Math.random() * tips.length)])
 
+    // Immediately scroll to answer section on mobile so user sees loading state
+    setTimeout(() => {
+      if (window.innerWidth < 768 && answerSectionRef.current) {
+        answerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })
+      }
+    }, 100)
+
     // Use refs to get the latest values (avoids closure issue)
     const currentResumeContent = resumeContentRef.current
     const currentJobRole = jobRoleRef.current
