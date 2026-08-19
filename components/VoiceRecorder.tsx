@@ -254,8 +254,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     // Check if we should stop
     if (lastSpeechTimeRef.current && hasSpokenRef.current) {
       const silenceDuration = now - lastSpeechTimeRef.current
-      // Use 1.5s (1500ms) for a much snappier response time
-      const silenceTimeout = 1500
+      // Give the user a generous 2.5s window to pause for breath or thought before auto-stopping
+      const silenceTimeout = 2500
       if (silenceDuration > silenceTimeout) {
         if (autoModeRef.current) {
           stopRecording(true)
