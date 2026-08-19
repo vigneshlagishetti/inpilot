@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     // Fast LLM correction step to fix grammar and speech-to-text phonetic errors
     const completion = await openai.chat.completions.create({
-      model: isGroq ? 'qwen/qwen3.6-27b' : 'gpt-3.5-turbo',
+      model: isGroq ? 'openai/gpt-oss-20b' : 'gpt-3.5-turbo',
       messages: [
         { 
           role: 'system', 
