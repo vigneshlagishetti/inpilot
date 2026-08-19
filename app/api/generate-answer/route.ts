@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const systemPrompt = buildSystemPrompt(question, resumeContent, jobRole, customInstructions, projectContext)
 
     const response = await openai.chat.completions.create({
-      model: 'groq/compound',
+      model: 'groq/compound-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: question },
@@ -43,9 +43,12 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         try {
           for await (const chunk of response) {
-            const content = chunk.choices[0]?.delta?.content || ''
+            const content = chunk.choices[0]?.delta?.content
             if (content) {
               controller.enqueue(new TextEncoder().encode(content))
+            } else if (content === undefined) {
+              // Send a keep-alive space to prevent Vercel Edge Runtime 10s TTFB timeout during AI "thinking" phase
+              controller.enqueue(new TextEncoder().encode(' '))
             }
           }
         } finally {
