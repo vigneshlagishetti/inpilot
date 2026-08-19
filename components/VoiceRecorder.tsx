@@ -344,13 +344,6 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     silenceStartRef.current = null
     cleanupAudio()
 
-    // Start Native Speech Recognition IMMEDIATELY to preserve user gesture token on mobile browsers
-    // (if we wait for getUserMedia, the gesture token expires and it throws not-allowed)
-    if (recognitionRef.current) {
-      restartingRef.current = false
-      try { recognitionRef.current.start() } catch (e) { console.warn('Recognition start failed:', e) }
-    }
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -361,6 +354,12 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
         }
       })
       streamRef.current = stream
+
+      // Start Native Speech Recognition AFTER getUserMedia to prevent Android mic-stealing conflicts
+      if (recognitionRef.current) {
+        restartingRef.current = false
+        try { recognitionRef.current.start() } catch (e) { console.warn('Recognition start failed:', e) }
+      }
 
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
