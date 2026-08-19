@@ -723,6 +723,8 @@ export default function DashboardPage() {
 
       let isFirstChunk = true
       let hasScrolledToAnswer = false
+      let spokenTextLength = 0
+      let hasStartedSpeaking = false
       let lastUpdateTime = 0
 
       while (true) {
