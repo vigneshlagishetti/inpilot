@@ -17,6 +17,8 @@ export async function POST(req: Request) {
 
     const question = formData.get('question') as string || ''
     const jobRole = formData.get('jobRole') as string || ''
+    const resumeContent = formData.get('resumeContent') as string || ''
+    const projectContext = formData.get('projectContext') as string || ''
 
     const baseURL = process.env.OPENAI_BASE_URL || ''
     const isGroq = baseURL.toLowerCase().includes('groq')
@@ -36,7 +38,17 @@ export async function POST(req: Request) {
       messages: [
         { 
           role: 'system', 
-          content: `You are an advanced speech-to-text grammar corrector for a software engineering interview. The user is interviewing for the role of "${jobRole}". The interviewer just asked this question: "${question}". The user spoke their answer into a microphone and the raw STT text may contain phonetic mistakes (e.g. "tpl" instead of "tuple", "rivers" instead of "reverse", "agentic drag" instead of "agentic RAG"). Use the context of the job role and the specific question asked to correctly infer and fix any domain-specific terms, jargon, or acronyms that the raw STT failed to capture. Fix the text so it makes perfect grammatical and technical sense in this context. Output ONLY the corrected text and absolutely nothing else. Do not add quotes.` 
+          content: `You are an advanced speech-to-text grammar corrector for a software engineering interview. The user is interviewing for the role of "${jobRole}". 
+          ${question ? `The interviewer just asked this question: "${question}". The user is speaking their answer.` : `The user is speaking an interview question or technical concept.`}
+          
+          Context about the user's background (use this to infer obscure technical jargon they might mention):
+          ${resumeContent ? `RESUME CONTEXT:\n${resumeContent.substring(0, 1000)}\n` : ''}
+          ${projectContext ? `PROJECT CONTEXT:\n${projectContext.substring(0, 1000)}\n` : ''}
+          
+          The user spoke into a microphone and the raw STT text may contain phonetic mistakes (e.g. "kassan" instead of "cosine", "tpl" instead of "tuple", "rivers" instead of "reverse", "agentic drag" instead of "agentic RAG"). 
+          
+          Use the context of the job role, resume, projects, and specific question to correctly infer and fix any domain-specific terms, jargon, or acronyms that the raw STT failed to capture. Fix the text so it makes perfect grammatical and technical sense. 
+          Output ONLY the corrected text and absolutely nothing else. Do not add quotes.` 
         },
         { role: 'user', content: rawText }
       ],

@@ -1077,6 +1077,11 @@ export default function DashboardPage() {
                         ref={voiceRecorderRef}
                         onTranscriptionComplete={handleTranscription}
                         onRecordingStateChange={setIsRecording}
+                        currentQuestion={currentQuestion}
+                        jobRole={jobRole || undefined}
+                        resumeContent={resumeContent || undefined}
+                        customInstructions={customInstructions || undefined}
+                        projectContext={projects.length > 0 ? projects.map(p => `=== PROJECT: ${p.name} ===\n${p.content}\n=======================`).join('\n\n') : undefined}
                       />
 
                       {currentQuestion && !isRecording && (
@@ -1359,9 +1364,15 @@ export default function DashboardPage() {
                           </div>
                           <div className="max-w-2xl mx-auto">
                             <VoiceRecorder
+                              ref={voiceRecorderRef}
                               onTranscriptionComplete={handleTranscription}
                               onRecordingStateChange={setIsRecording}
                               autoStart={true}
+                              currentQuestion={mockQuestion}
+                              jobRole={jobRole || undefined}
+                              resumeContent={resumeContent || undefined}
+                              customInstructions={customInstructions || undefined}
+                              projectContext={projects.length > 0 ? projects.map(p => `=== PROJECT: ${p.name} ===\n${p.content}\n=======================`).join('\n\n') : undefined}
                             />
                           </div>
                         </div>

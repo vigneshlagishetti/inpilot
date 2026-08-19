@@ -11,10 +11,15 @@ interface VoiceRecorderProps {
   onTranscriptionComplete: (text: string) => void
   onRecordingStateChange: (isRecording: boolean) => void
   autoStart?: boolean
+  currentQuestion?: string
+  jobRole?: string
+  resumeContent?: string
+  customInstructions?: string
+  projectContext?: string
 }
 
 export const VoiceRecorder = forwardRef(function VoiceRecorder(
-  { onTranscriptionComplete, onRecordingStateChange, autoStart = false }: VoiceRecorderProps,
+  { onTranscriptionComplete, onRecordingStateChange, autoStart = false, currentQuestion, jobRole, resumeContent, customInstructions, projectContext }: VoiceRecorderProps,
   ref
 ) {
   // ── Display state ───────────────────────────────────────────────────────────
@@ -283,6 +288,9 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       formData.append('file', blob, 'recording.webm')
       if (currentQuestion) formData.append('question', currentQuestion)
       if (jobRole) formData.append('jobRole', jobRole)
+      if (resumeContent) formData.append('resumeContent', resumeContent)
+      if (customInstructions) formData.append('customInstructions', customInstructions)
+      if (projectContext) formData.append('projectContext', projectContext)
 
       const response = await fetch('/api/transcribe', {
         method: 'POST',
