@@ -15,6 +15,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
     }
 
+    const question = formData.get('question') as string || ''
+    const jobRole = formData.get('jobRole') as string || ''
+
     const baseURL = process.env.OPENAI_BASE_URL || ''
     const isGroq = baseURL.toLowerCase().includes('groq')
     const model = isGroq ? 'whisper-large-v3-turbo' : 'whisper-1'
@@ -33,7 +36,7 @@ export async function POST(req: Request) {
       messages: [
         { 
           role: 'system', 
-          content: 'You are an advanced speech-to-text grammar corrector for a software engineering interview. The user spoke into a microphone and the raw text may contain phonetic mistakes (e.g. "tpl" instead of "tuple", "rivers" instead of "reverse", "agentic drag" instead of "agentic RAG"). Fix the text so it makes perfect grammatical and technical sense in the context of programming and AI. Output ONLY the corrected text and absolutely nothing else. Do not add quotes.' 
+          content: `You are an advanced speech-to-text grammar corrector for a software engineering interview. The user is interviewing for the role of "${jobRole}". The interviewer just asked this question: "${question}". The user spoke their answer into a microphone and the raw STT text may contain phonetic mistakes (e.g. "tpl" instead of "tuple", "rivers" instead of "reverse", "agentic drag" instead of "agentic RAG"). Use the context of the job role and the specific question asked to correctly infer and fix any domain-specific terms, jargon, or acronyms that the raw STT failed to capture. Fix the text so it makes perfect grammatical and technical sense in this context. Output ONLY the corrected text and absolutely nothing else. Do not add quotes.` 
         },
         { role: 'user', content: rawText }
       ],

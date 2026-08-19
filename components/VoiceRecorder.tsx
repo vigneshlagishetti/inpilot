@@ -280,7 +280,9 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
     try {
       const formData = new FormData()
-      formData.append('file', blob, filename)
+      formData.append('file', blob, 'recording.webm')
+      if (currentQuestion) formData.append('question', currentQuestion)
+      if (jobRole) formData.append('jobRole', jobRole)
 
       const response = await fetch('/api/transcribe', {
         method: 'POST',
