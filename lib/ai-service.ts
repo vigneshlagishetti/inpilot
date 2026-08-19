@@ -107,10 +107,10 @@ IMPORTANT: The question may contain speech-to-text transcription errors. Use con
 FORMAT (use exact markers, output ONLY the content below each marker, do NOT output your internal thoughts or meta-instructions):
 
 ---DIRECT_ANSWER---
-[Write a 5-6 line clear, conversational, and direct answer to the question in plain language. NO CODE here.]
+[Write a 2-3 sentence clear, conversational, and direct answer. Be very concise. NO CODE here.]
 
 ---DETAILED_EXPLANATION---
-[In-depth explanation in 3-4 paragraphs covering: 1) The problem/concept clearly, 2) How the solution works step-by-step, 3) Edge cases or important considerations, 4) Practical implications or real-world usage.]
+[Brief 1-2 paragraph explanation covering the core concept. Keep it short and punchy.]
 
 ---EXAMPLE---
 [Real-world example or use case demonstrating the concept. Write "N/A" if not applicable.]
