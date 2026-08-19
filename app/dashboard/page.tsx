@@ -729,11 +729,7 @@ export default function DashboardPage() {
         const { done, value } = await reader.read()
         if (done) {
           // Final parse to ensure we didn't miss anything in the throttle window
-          let finalCleanText = rawText
-          if (finalCleanText.includes('</think>')) {
-            finalCleanText = finalCleanText.split('</think>')[1] || ''
-          }
-          finalAnswer = parseResponse(finalCleanText)
+          finalAnswer = parseResponse(rawText)
           setCurrentAnswer(finalAnswer)
           break
         }
@@ -745,32 +741,20 @@ export default function DashboardPage() {
 
         rawText += decoder.decode(value, { stream: true })
         
-        let cleanText = rawText
-        // Strip out reasoning blocks (<think>...</think>) from models like Qwen
-        if (cleanText.includes('<think>')) {
-          if (cleanText.includes('</think>')) {
-            cleanText = cleanText.split('</think>')[1] || ''
-          } else {
-            cleanText = '' // Hide text completely while model is thinking
-          }
-        }
-        
         // Progressively parse and update UI (throttle to 50ms to prevent UI thread blocking)
         const now = Date.now()
         if (now - lastUpdateTime > 50) {
-          if (cleanText) {
-            finalAnswer = parseResponse(cleanText)
-            setCurrentAnswer(finalAnswer)
-            
-            // Auto-scroll ONCE when the first real text appears
-            if (!hasScrolledToAnswer) {
-              hasScrolledToAnswer = true
-              setTimeout(() => {
-                if (answerSectionRef.current) {
-                  answerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }
-              }, 100)
-            }
+          finalAnswer = parseResponse(rawText)
+          setCurrentAnswer(finalAnswer)
+          
+          // Auto-scroll ONCE when the first real text appears
+          if (!hasScrolledToAnswer) {
+            hasScrolledToAnswer = true
+            setTimeout(() => {
+              if (answerSectionRef.current) {
+                answerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            }, 100)
           }
           lastUpdateTime = now
         }
