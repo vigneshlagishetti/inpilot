@@ -231,24 +231,17 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     const voiceAverage = voiceSum / (endBin - startBin + 1)
 
     // Increase threshold significantly to ignore fans/AC/background noise.
-    // On mobile devices with AGC, the levels are extremely low, so we use a very safe threshold of 15.
-    const silenceThreshold = isMobileRef.current ? 20 : 50
+    // On mobile devices with AGC, the levels are extremely low, so we use a very safe threshold of 10.
+    const silenceThreshold = isMobileRef.current ? 10 : 35
     const now = Date.now()
 
     // Use audio VAD to detect speech start and strong voice signals.
-    // IMPORTANT: Only extend the silence timer for STRONG signals (clearly speech).
-    // Weak signals (barely above threshold) only set hasSpokenRef.
-    // This prevents background noise (fans/AC/ambient) from blocking auto-stop.
     if (voiceAverage >= silenceThreshold) {
       if (!hasSpokenRef.current) {
         hasSpokenRef.current = true // User has started speaking
-        lastSpeechTimeRef.current = now // Set initial speech time
       }
-      // Only extend silence timer for clearly audible speech (3x threshold)
-      // Desktop: voiceAverage >= 150, Mobile: voiceAverage >= 60
-      if (voiceAverage >= silenceThreshold * 3) {
-        lastSpeechTimeRef.current = now
-      }
+      // Always extend silence timer for detected speech to prevent AGC cutoff
+      lastSpeechTimeRef.current = now
     }
 
     // Check if we should stop
