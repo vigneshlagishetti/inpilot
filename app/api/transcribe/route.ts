@@ -25,7 +25,25 @@ export async function POST(req: Request) {
       prompt: 'This is a software engineering interview. The candidate may use technical programming jargon such as tuple, array, string, boolean, integer, loop, recursion, palindrome, React, Node.js, JavaScript, Python, TypeScript, System Design, Data Structures, Algorithms, Binary Search Trees, HashMap, Big O notation, API, JSON. The transcript MUST include all hesitation words exactly as spoken.',
     })
 
-    return NextResponse.json({ text: transcription.text })
+    const rawText = transcription.text
+
+    // Fast LLM correction step to fix grammar and speech-to-text phonetic errors
+    const completion = await openai.chat.completions.create({
+      model: isGroq ? 'openai/gpt-oss-20b' : 'gpt-3.5-turbo',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You are an advanced speech-to-text grammar corrector for a software engineering interview. The user spoke into a microphone and the raw text may contain phonetic mistakes (e.g. "tpl" instead of "tuple", "rivers" instead of "reverse", "buy nary" instead of "binary"). Fix the text so it makes perfect grammatical and technical sense in the context of programming. Output ONLY the corrected text and absolutely nothing else. Do not add quotes.' 
+        },
+        { role: 'user', content: rawText }
+      ],
+      temperature: 0.1,
+      max_tokens: 500,
+    })
+
+    const correctedText = completion.choices[0]?.message?.content?.trim() || rawText
+
+    return NextResponse.json({ text: correctedText, rawText: rawText })
   } catch (error: any) {
     console.error('Transcription error:', error)
     return NextResponse.json(
