@@ -681,7 +681,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
               <div className="w-full p-3 bg-muted rounded-lg border border-gray-200 dark:border-gray-700">
                 <div className="flex justify-between items-center mb-1.5">
                   <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    {transcript ? 'Final Transcript:' : 'Live Transcript (Web Speech API):'}
+                    {transcript ? 'Final Transcript:' : 'Live Draft (Whisper AI will correct errors):'}
                   </p>
                   {confidence && (
                     <div className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${confidence.score >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :

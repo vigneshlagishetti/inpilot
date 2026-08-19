@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
     const baseURL = process.env.OPENAI_BASE_URL || ''
     const isGroq = baseURL.toLowerCase().includes('groq')
-    const model = isGroq ? 'whisper-large-v3-turbo' : 'whisper-1'
+    const model = isGroq ? 'whisper-large-v3' : 'whisper-1'
 
     const transcription = await openai.audio.transcriptions.create({
       file,
