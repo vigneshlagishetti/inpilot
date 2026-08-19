@@ -375,7 +375,11 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       mediaRecorder.onstop = () => {
         // Only process if we actually recorded something and haven't processed yet
         if (audioChunksRef.current.length > 0 && !hasSubmittedRef.current) {
-          const mimeType = mediaRecorder.mimeType || 'audio/webm'
+          let mimeType = mediaRecorder.mimeType
+          if (!mimeType) {
+            // iOS Safari often has empty mimeType, fallback dynamically
+            mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+          }
           const fileExtension = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm'
 
           const audioBlob = new Blob(audioChunksRef.current, { type: mimeType })
@@ -386,6 +390,12 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
       // Setup audio analysis for silence detection
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
       audioContextRef.current = audioContext
+      
+      // CRITICAL FIX FOR iOS SAFARI: AudioContext starts suspended and must be resumed immediately
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume()
+      }
+      
       const analyser = audioContext.createAnalyser()
       analyserRef.current = analyser
       analyser.fftSize = 512
