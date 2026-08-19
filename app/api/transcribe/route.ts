@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const transcription = await openai.audio.transcriptions.create({
       file,
       model,
-      prompt: 'This is a software engineering interview. The candidate may use technical programming jargon such as React, Node.js, JavaScript, Python, TypeScript, System Design, Data Structures, Algorithms, Binary Search Trees, HashMap, Big O notation, Kubernetes, Docker, scalability, and latency. The transcript MUST include all hesitation words exactly as spoken, such as um, uh, ah, like, you know, basically, literally.',
+      prompt: 'This is a software engineering interview. The candidate may use technical programming jargon such as tuple, array, string, boolean, integer, loop, recursion, palindrome, React, Node.js, JavaScript, Python, TypeScript, System Design, Data Structures, Algorithms, Binary Search Trees, HashMap, Big O notation, API, JSON. The transcript MUST include all hesitation words exactly as spoken.',
     })
 
     return NextResponse.json({ text: transcription.text })
