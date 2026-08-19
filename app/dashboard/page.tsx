@@ -743,22 +743,22 @@ export default function DashboardPage() {
 
         rawText += decoder.decode(value, { stream: true })
         
-        // Progressively parse and update UI (throttle to 50ms to prevent UI thread blocking)
-        const now = Date.now()
-        if (now - lastUpdateTime > 50) {
-          finalAnswer = parseResponse(rawText)
-          setCurrentAnswer(finalAnswer)
-          
-          // Auto-scroll ONCE when the first real text appears
-          if (!hasScrolledToAnswer) {
-            hasScrolledToAnswer = true
-            setTimeout(() => {
-              if (answerSectionRef.current) {
-                answerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }
-            }, 100)
-          }
-          lastUpdateTime = now
+        // Add a tiny artificial delay (15ms) to simulate natural ChatGPT-style streaming
+        // because Groq is so incredibly fast (generating full responses in < 0.1s) that it otherwise looks like a single data dump.
+        await new Promise(resolve => setTimeout(resolve, 15))
+        
+        // Progressively parse and update UI immediately
+        finalAnswer = parseResponse(rawText)
+        setCurrentAnswer(finalAnswer)
+        
+        // Auto-scroll ONCE when the first real text appears
+        if (!hasScrolledToAnswer) {
+          hasScrolledToAnswer = true
+          setTimeout(() => {
+            if (answerSectionRef.current) {
+              answerSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+          }, 100)
         }
         
         // Progressive TTS
