@@ -42,7 +42,7 @@ Output a JSON object with the following structure:
 Do NOT wrap the JSON in markdown blocks. Output only valid JSON.`;
 
     const response = await openai.chat.completions.create({
-      model: 'llama-3.1-8b-instant', // using same model as generate-answer
+      model: 'llama-3.3-70b-versatile',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Question: ${question}\nCandidate Answer: ${userAnswer}` },

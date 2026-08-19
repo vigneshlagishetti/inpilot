@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const systemPrompt = buildSystemPrompt(question, resumeContent, jobRole, customInstructions, projectContext)
 
     const response = await openai.chat.completions.create({
-      model: 'llama-3.1-8b-instant',
+      model: 'llama-3.3-70b-versatile',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: question },
