@@ -452,11 +452,13 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     }
   }, [checkSilence, cleanupAudio, onRecordingStateChange, toast])
 
-  // ── Stop recording ──────────────────────────────────────────────────────────
   const stopRecording = useCallback((submit: boolean = true) => {
     if (!isRecordingRef.current) return
 
     setIsRecording(false)
+    if (submit) {
+      setIsProcessing(true) // Instantly disable the button to prevent double-taps
+    }
     onRecordingStateChange(false)
 
     if (pollingIntervalRef.current) {
