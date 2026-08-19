@@ -31,7 +31,7 @@ ${customInstructions ? `\nCustom Instructions:\n${customInstructions}` : ''}`
     systemPrompt += `\n\nProvide exactly ONE clear interview question. Output ONLY the question text, no conversational filler or quotes.`
 
     const response = await openai.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-20b',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Generate a new interview question.` },
