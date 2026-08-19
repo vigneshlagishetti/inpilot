@@ -48,20 +48,17 @@ export async function POST(request: NextRequest) {
               controller.enqueue(new TextEncoder().encode(content))
             }
           }
-        } catch (error) {
-          console.error('Error during streaming:', error)
-          controller.error(error)
         } finally {
           controller.close()
         }
       },
     })
 
-    return new NextResponse(stream, {
+    return new Response(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked',
         'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no'
       },
     })
   } catch (error: any) {
