@@ -47,6 +47,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
   const restartingRef = useRef(false)
   const hasSpokenRef = useRef(false)
   const lastSpeechTimeRef = useRef<number | null>(null)
+  const previousWordCountRef = useRef(0)
+  const recordingStartTimeRef = useRef(0)
 
   // To avoid duplicate submissions
   const hasSubmittedRef = useRef(false)
@@ -106,11 +108,17 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
         const cleanedLiveText = (final + interim).trim().replace(/\b(\w+)( \1\b)+/gi, '$1')
         setInterimTranscript(cleanedLiveText)
 
-        // Fallback: If Web Speech API heard something, the user has definitely spoken
+        // Mark that the user has spoken if we got text
         if (cleanedLiveText.length > 0) {
           if (!hasSpokenRef.current) hasSpokenRef.current = true
-          // Update last speech time to prevent premature cutoff while Web Speech API is still processing
-          lastSpeechTimeRef.current = Date.now()
+          // Only extend the silence timer if genuinely NEW words are being spoken.
+          // On Android Chrome, Web Speech API fires onresult repeatedly with
+          // the same or slightly refined text, which blocks auto-stop.
+          const wordCount = cleanedLiveText.split(/\s+/).filter(Boolean).length
+          if (wordCount > previousWordCountRef.current) {
+            lastSpeechTimeRef.current = Date.now()
+            previousWordCountRef.current = wordCount
+          }
         }
       }
 
@@ -224,7 +232,7 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
 
     // Increase threshold significantly to ignore fans/AC/background noise.
     // On mobile devices with AGC, the levels are extremely low, so we use a very safe threshold of 15.
-    const silenceThreshold = isMobileRef.current ? 15 : 50
+    const silenceThreshold = isMobileRef.current ? 20 : 50
     const now = Date.now()
 
     // If Web Speech API is working, it already updates lastSpeechTimeRef in onresult.
@@ -239,12 +247,22 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     // Check if we should stop
     if (lastSpeechTimeRef.current && hasSpokenRef.current) {
       const silenceDuration = now - lastSpeechTimeRef.current
-      // If they have spoken, wait exactly 2 seconds of silence to assume they finished (ONLY in Auto Mode)
-      if (silenceDuration > 2000) {
+      // Use 2.5s on mobile (Android Chrome needs more buffer) and 2s on desktop
+      const silenceTimeout = isMobileRef.current ? 2500 : 2000
+      if (silenceDuration > silenceTimeout) {
         if (autoModeRef.current) {
           stopRecording(true)
           return // Stop polling
         }
+      }
+    }
+
+    // Safety: auto-stop after 60 seconds to prevent infinite recording
+    if (autoModeRef.current && hasSpokenRef.current && recordingStartTimeRef.current > 0) {
+      const recordingDuration = now - recordingStartTimeRef.current
+      if (recordingDuration > 60000) {
+        stopRecording(true)
+        return
       }
     }
 
@@ -317,6 +335,8 @@ export const VoiceRecorder = forwardRef(function VoiceRecorder(
     hasSubmittedRef.current = false
     hasSpokenRef.current = false
     lastSpeechTimeRef.current = null
+    previousWordCountRef.current = 0
+    recordingStartTimeRef.current = Date.now()
     setTranscript('')
     setInterimTranscript('')
     setConfidence(null)
