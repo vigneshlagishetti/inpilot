@@ -3,6 +3,9 @@ import { buildSystemPrompt } from '@/lib/ai-service'
 import { auth } from '@clerk/nextjs/server'
 import OpenAI from 'openai'
 
+export const runtime = 'edge'
+export const dynamic = 'force-dynamic'
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
