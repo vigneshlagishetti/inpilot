@@ -724,10 +724,16 @@ export default function DashboardPage() {
       let isFirstChunk = true
       let spokenTextLength = 0
       let hasStartedSpeaking = false
+      let lastUpdateTime = 0
 
       while (true) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          // Final parse to ensure we didn't miss anything in the throttle window
+          finalAnswer = parseResponse(rawText)
+          setCurrentAnswer(finalAnswer)
+          break
+        }
         
         if (isFirstChunk) {
           setIsLoading(false)
@@ -736,9 +742,13 @@ export default function DashboardPage() {
 
         rawText += decoder.decode(value, { stream: true })
         
-        // Progressively parse and update UI
-        finalAnswer = parseResponse(rawText)
-        setCurrentAnswer(finalAnswer)
+        // Progressively parse and update UI (throttle to 50ms to prevent UI thread blocking)
+        const now = Date.now()
+        if (now - lastUpdateTime > 50) {
+          finalAnswer = parseResponse(rawText)
+          setCurrentAnswer(finalAnswer)
+          lastUpdateTime = now
+        }
         
         // Auto-scroll on first chunk
         if (rawText.length < 50) {

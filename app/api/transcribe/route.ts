@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
     const baseURL = process.env.OPENAI_BASE_URL || ''
     const isGroq = baseURL.toLowerCase().includes('groq')
-    const model = isGroq ? 'whisper-large-v3' : 'whisper-1'
+    const model = isGroq ? 'whisper-large-v3-turbo' : 'whisper-1'
 
     const transcription = await openai.audio.transcriptions.create({
       file,
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     // Fast LLM correction step to fix grammar and speech-to-text phonetic errors
     const completion = await openai.chat.completions.create({
-      model: isGroq ? 'openai/gpt-oss-20b' : 'gpt-3.5-turbo',
+      model: isGroq ? 'qwen/qwen3.6-27b' : 'gpt-3.5-turbo',
       messages: [
         { 
           role: 'system', 
